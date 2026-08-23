@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K.A.R.M.A Cloud SIEM — Threat Deception Platform</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/static/Project_Assets/logo_icon.ico">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Leaflet CSS for World Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+    <!-- Custom SIEM CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    <!-- Leaflet JS & Chart.js -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- SIEM TOP NAVIGATION BAR -->
+    <header class="siem-topbar">
+        <div class="topbar-left">
+            <button class="sidebar-toggle-btn" id="sidebarToggle" title="Toggle Sidebar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <div class="siem-logo" id="brandLogoBtn" title="Click to return to Home Dashboard" style="cursor: pointer;">
+                <img src="/static/Project_Assets/logo_main.png" alt="K.A.R.M.A Cloud SIEM Logo" class="brand-logo-img">
+                <span class="breadcrumb-slash">/</span>
+                <span class="breadcrumb-active">Threat Deception Platform</span>
+            </div>
+        </div>
+
+        <div class="topbar-center">
+            <div class="academic-badge" id="academicBadgeBtn" title="Click to view team details">
+                🏛️ The Oxford Evening Polytechnic • Sem VI | Guide: <strong>Mr. Subhash J R</strong>
+            </div>
+        </div>
+
+        <div class="topbar-right">
+            <div class="filter-dropdown">
+                <span class="icon">📅</span>
+                <select id="timeFilterSelect">
+                    <option value="24h">Last 24 hours</option>
+                    <option value="12h">Last 12 hours</option>
+                    <option value="realtime">Real-time Stream</option>
+                </select>
+            </div>
+
+            <!-- LIGHT / DARK MODE TOGGLE SWITCH -->
+            <button class="theme-switch-btn" id="themeToggle" title="Toggle Light/Dark Theme">
+                <span class="theme-icon-sun">☀️ Light</span>
+                <span class="theme-icon-moon">🌙 Dark</span>
+            </button>
+
+            <button class="btn btn-secondary" id="btnLaunchTester" style="background: var(--bg-hover); color: var(--accent-purple); border-color: var(--accent-purple);" title="Launch Honeypot Tester & Attacker Verification Suite">🧪 Tester / Attacker</button>
+            <button class="btn btn-primary" id="btnLaunchSim">⚡ Run Attack Simulator</button>
+            <button class="btn btn-secondary" id="btnResetData">Refresh</button>
+        </div>
+    </header>
+
+    <div class="siem-wrapper">
+        <!-- ENTERPRISE SIEM SIDEBAR -->
+        <aside class="siem-sidebar" id="siemSidebar">
+            <div class="sidebar-nav">
+                <div class="nav-section-title">SECURITY SUITE</div>
+                <a href="#summary" class="nav-item active" data-tab="summary">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Summary</span>
+                </a>
+                <a href="#threats" class="nav-item" data-tab="threats">
+                    <span class="nav-icon">🛡️</span>
+                    <span class="nav-text">Threats Overview</span>
+                </a>
+                <a href="#mitre" class="nav-item" data-tab="mitre">
+                    <span class="nav-icon">🎯</span>
+                    <span class="nav-text">MITRE ATT&CK</span>
+                </a>
+
+                <div class="nav-section-title">DECEPTION & ASSETS</div>
+                <a href="#decoys" class="nav-item" data-tab="decoys">
+                    <span class="nav-icon">⚡</span>
+                    <span class="nav-text">Honeypot & Decoy Control</span>
+                </a>
+                <a href="#honeytokens" class="nav-item" data-tab="honeytokens">
+                    <span class="nav-icon">🔑</span>
+                    <span class="nav-text">Honeytoken Vault</span>
+                </a>
+                <a href="/real-admin" target="_blank" class="nav-item">
+                    <span class="nav-icon">🔒</span>
+                    <span class="nav-text">Real Production Admin</span>
+                </a>
+
+                <div class="nav-section-title">PROJECT INFORMATION</div>
+                <a href="#about" class="nav-item" data-tab="about">
+                    <span class="nav-icon">ℹ️</span>
+                    <span class="nav-text">About The Project</span>
+                </a>
+            </div>
+
+            <!-- ACADEMIC SIDEBAR FOOTER ATTRIBUTION -->
+            <div class="sidebar-academic-footer">
+                <div class="col-title">The Oxford Evening Polytechnic</div>
+                <div class="col-sub">Cyber Security (Sem VI)</div>
+                <div class="guide-info">Guide: <strong>Mr. Subhash J R</strong></div>
+                <div class="team-names">
+                    Students:
+                    <ol>
+                        <li>Abhijeet Kumar</li>
+                        <li>Kanaka C</li>
+                        <li>Raghunandan T V</li>
+                    </ol>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MOBILE SIDEBAR BACKDROP OVERLAY -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- MAIN SIEM DASHBOARD CONTENT AREA -->
+        <main class="siem-main">
+            <!-- TAB 1: SUMMARY / DASHBOARD VIEW -->
+            <div class="tab-content active" id="tabSummary">
+                <!-- TOP SIEM KPI COUNT CARDS (Logz.io Style) -->
+                <section class="siem-kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-title">Threat events</div>
+                        <div class="kpi-value" id="statTotalAttacks">0</div>
+                        <div class="kpi-sub">Count</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-title">Audit events</div>
+                        <div class="kpi-value" id="statAuditEvents">0</div>
+                        <div class="kpi-sub">Count</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-title">Endpoint events</div>
+                        <div class="kpi-value" id="statEndpointEvents">0</div>
+                        <div class="kpi-sub">Count</div>
+                    </div>
+                    <div class="kpi-card text-danger-card">
+                        <div class="kpi-title">Quarantined Adversaries</div>
+                        <div class="kpi-value" id="statQuarantined">0</div>
+                        <div class="kpi-sub">Isolated</div>
+                    </div>
+                </section>
+
+                <!-- ROW 1: TIME SERIES TREND LINE PLOT & WORLD MAP (Logz.io Image 1 Style) -->
+                <section class="dashboard-row row-50-50">
+                    <div class="widget-box">
+                        <div class="widget-header">
+                            <h3>Event Volume Trend Line (@timestamp per 30 minutes)</h3>
+                            <span class="widget-tag">Line Plot</span>
+                        </div>
+                        <div class="widget-body">
+                            <canvas id="timeSeriesChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- ATTACKER ORIGIN WORLD MAP WIDGET -->
+                    <div class="widget-box">
+                        <div class="widget-header">
+                            <h3>Attacker Origin World Map</h3>
+                            <span class="widget-tag">Geolocation Markers</span>
+                        </div>
+                        <div class="widget-body map-body">
+                            <div id="attackerWorldMap"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ROW 2: MULTIPLE SIEM PLOTS (Logsign Image 2 Style) -->
+                <section class="dashboard-row row-33-33-33">
+                    <div class="widget-box">
+                        <div class="widget-header">
+                            <h3>Products / Services Volume</h3>
+                            <span class="widget-tag">Stacked Bar</span>
+                        </div>
+                        <div class="widget-body">
+                            <canvas id="productsBarChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="widget-box">
+                        <div class="widget-header">
+                            <h3>Log Types Volume Breakdown</h3>
+                            <span class="widget-tag">Doughnut</span>
+                        </div>
+                        <div class="widget-body">
+                            <canvas id="logTypesDoughnutChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="widget-box">
+                        <div class="widget-header">
+                            <h3>Event Actions & Outcomes</h3>
+                            <span class="widget-tag">Horizontal Bar</span>
+                        </div>
+                        <div class="widget-body">
+                            <canvas id="eventActionsHorizontalChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ROW 3: DETAILED SIEM EVENT TELEMETRY TABLE -->
+                <section class="dashboard-row">
+                    <div class="widget-box width-100">
+                        <div class="widget-header">
+                            <h3>Real-Time Event Management & Log Inspector</h3>
+                            <span class="widget-tag">Live Feed</span>
+                        </div>
+                        <div class="widget-body table-body">
+                            <table class="siem-table">
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Origin / Country</th>
+                                        <th>Source IP</th>
+                                        <th>Target Service</th>
+                                        <th>Payload Snippet</th>
+                                        <th>MITRE TTP</th>
+                                        <th>Severity</th>
+                                        <th>AI Forensic Report</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="telemetryTableBody">
+                                    <tr>
+                                        <td colspan="8" class="empty-cell">Awaiting SIEM log telemetry...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- TAB 2: MITRE ATT&CK HEATMAP -->
+            <div class="tab-content" id="tabMitre">
+                <div class="widget-box width-100">
+                    <div class="widget-header">
+                        <h3>MITRE ATT&CK Framework Heatmap Grid</h3>
+                        <span class="widget-tag">TTP Pattern Recognition</span>
+                    </div>
+                    <div class="widget-body">
+                        <div class="mitre-grid-catalog" id="mitreGrid"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: HONEYTOKEN VAULT -->
+            <div class="tab-content" id="tabHoneytokens">
+                <div class="widget-box width-100">
+                    <div class="widget-header">
+                        <h3>Honeytoken Vault & Active Decoys</h3>
+                        <button class="btn btn-sm btn-primary" id="btnCreateToken">+ Generate Honeytoken</button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="honeytoken-grid" id="honeytokenList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: THREATS OVERVIEW -->
+            <div class="tab-content" id="tabThreats">
+                <!-- TOP SECTION: ATTACKER ORIGIN GEOLOCATION WORLD MAP -->
+                <div class="widget-box width-100" style="margin-bottom: 20px;">
+                    <div class="widget-header">
+                        <h3>Attacker Origin Geolocation World Map</h3>
+                        <span class="widget-tag">Global Threat Vectors</span>
+                    </div>
+                    <div class="widget-body map-body">
+                        <div id="threatsWorldMap" style="height: 340px; width: 100%; border-radius: 6px;"></div>
+                    </div>
+                </div>
+
+                <!-- BOTTOM SECTION: ADVERSARY FORENSIC PROFILER & QUARANTINE MANAGER -->
+                <div class="widget-box width-100">
+                    <div class="widget-header">
+                        <h3>Adversary Forensic Profiler & Quarantine Manager</h3>
+                        <span class="widget-tag">Active Threat Telemetry</span>
+                    </div>
+                    <div class="widget-body table-body">
+                        <table class="siem-table">
+                            <thead>
+                                <tr>
+                                    <th>Adversary IP</th>
+                                    <th>Location</th>
+                                    <th>First / Last Seen</th>
+                                    <th>Attempts</th>
+                                    <th>Risk Score</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attackersTableBody">
+                                <tr>
+                                    <td colspan="7" class="empty-cell">No adversary profiles recorded.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: HONEYPOT & DECOY CONTROL -->
+            <div class="tab-content" id="tabDecoys">
+                <div class="widget-box width-100" style="margin-bottom: 20px;">
+                    <div class="widget-header">
+                        <h3>Honeypot & Decoy Status Center</h3>
+                        <span class="widget-tag">Active Decoy Telemetry</span>
+                    </div>
+                    <div class="widget-body">
+                        <div style="background: rgba(0, 112, 243, 0.05); border: 1px solid rgba(0, 112, 243, 0.2); padding: 12px 16px; border-radius: 8px; margin-bottom: 16px;">
+                            <p style="color: var(--text-primary); font-size: 12px; margin: 0; line-height: 1.5;">
+                                ℹ️ <strong>Honeypot Socket Binding Information:</strong> Decoy listener ports and active honeypots are configured at server launch using the <strong>K.A.R.M.A Desktop Control Panel</strong>. Ports disabled at launch remain completely unbound at the OS kernel level, ensuring scanner tools (such as Nmap) accurately detect them as <strong>CLOSED</strong>.
+                            </p>
+                        </div>
+                        <div class="decoy-grid" id="decoyListContainer">
+                            <!-- Populated dynamically via JS -->
+                            <div style="color: var(--text-muted); font-size: 12px; padding: 20px;">Loading decoy status...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 6: ABOUT THE PROJECT -->
+            <div class="tab-content" id="tabAbout">
+                <div class="widget-box width-100" style="margin-bottom: 20px;">
+                    <div class="widget-header">
+                        <h3>🛡️ K.A.R.M.A Cloud SIEM & Threat Deception Platform</h3>
+                        <span class="widget-tag">Sem VI Major Project</span>
+                    </div>
+                    <div class="widget-body">
+                        <div class="karma-explanation-box" style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.25); padding: 14px 18px; border-radius: 8px; margin-bottom: 20px;">
+                            <h4 style="color: var(--accent-green); font-size: 14px; margin-bottom: 6px; font-weight: 700;">⚡ Project Branding: K.A.R.M.A</h4>
+                            <p style="font-size: 13px; color: var(--text-primary); line-height: 1.6;">
+                                <strong>K.A.R.M.A</strong> represents 
+                                <strong style="color: var(--accent-blue);">K</strong>anaka, 
+                                <strong style="color: var(--accent-blue);">A</strong>bhijeet, and 
+                                <strong style="color: var(--accent-blue);">R</strong>aghunandan — 
+                                <strong style="color: var(--accent-green);">M</strong>onitoring &amp; 
+                                <strong style="color: var(--accent-green);">A</strong>ctive Cyber Deception Platform.
+                            </p>
+                            <p style="font-style: italic; color: var(--text-muted); font-size: 11px; margin-top: 4px;">
+                                "In Cybersecurity, KARMA signifies that an adversary's attack probes return directly to trap, profile, and isolate them automatically."
+                            </p>
+                        </div>
+
+                        <p style="font-size: 13px; line-height: 1.6; color: var(--text-secondary); margin-bottom: 20px;">
+                            <strong>K.A.R.M.A Cloud SIEM</strong> is an enterprise-grade Cyber Threat Deception & Intelligence Platform designed to trap, analyze, and neutralize cyber adversaries in real time using active honeypots, honeytokens, MITRE ATT&CK mapping, and automated quarantine mechanisms.
+                        </p>
+                        
+                        <div class="about-grid">
+                            <!-- Academic Card -->
+                            <div class="about-card">
+                                <div class="about-icon">🏛️</div>
+                                <h4>Academic Institution</h4>
+                                <p class="about-main-text">The Oxford Evening Polytechnic</p>
+                                <p class="about-sub-text">Bangalore, Karnataka</p>
+                            </div>
+
+                            <!-- Department Card -->
+                            <div class="about-card">
+                                <div class="about-icon">💻</div>
+                                <h4>Department & Program</h4>
+                                <p class="about-main-text">Department of Computer Science & Engineering</p>
+                                <p class="about-sub-text">Diploma in Cyber Security & Engineering</p>
+                            </div>
+
+                            <!-- Semester & Subject Card -->
+                            <div class="about-card">
+                                <div class="about-icon">📚</div>
+                                <h4>Semester & Course</h4>
+                                <p class="about-main-text">Semester VI (6th Sem)</p>
+                                <p class="about-sub-text">Subject: Major Project (20CS61P)</p>
+                            </div>
+
+                            <!-- Guide Profile Card -->
+                            <div class="about-card highlight-card guide-card">
+                                <div class="profile-frame guide-frame">
+                                    <img src="/static/Project_Assets/Subhash_JR_DP.png" alt="Mr. Subhash J R" class="profile-img">
+                                    <span class="role-badge guide-badge">PROJECT GUIDE</span>
+                                </div>
+                                <h4>Project Guide & Mentor</h4>
+                                <p class="about-main-text">Mr. Subhash J R</p>
+                                <p class="about-sub-text">Lecturer, Dept of Computer Science & Engineering</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TEAM MEMBERS & TECHNICAL HIGHLIGHTS ROW -->
+                <div class="dashboard-row row-50-50">
+                    <div class="widget-box">
+                        <div class="widget-header">
+                            <h3>👥 Project Created By (Team Members)</h3>
+                            <span class="widget-tag">Student Developers</span>
+                        </div>
+                        <div class="widget-body">
+                            <div class="team-cards-grid">
+                                <!-- Abhijeet Kumar -->
+                                <div class="team-profile-card">
+                                    <div class="profile-frame">
+                                        <img src="/static/Project_Assets/Abhijeet_DP.png" alt="Abhijeet Kumar" class="profile-img">
+                                        <span class="role-badge lead-badge">TEAM LEAD</span>
+                                    </div>
+                                    <div class="team-info">
+                                        <div class="team-name">Abhijeet Kumar</div>
+                                        <div class="team-role">Core Architect & Lead Developer</div>
+                                        <div class="team-sub">Dept of CSE • Sem VI</div>
+                                    </div>
+                                </div>
+
+                                <!-- Kanaka C -->
+                                <div class="team-profile-card">
+                                    <div class="profile-frame">
+                                        <img src="/static/Project_Assets/Kanaka_C_DP.png" alt="Kanaka C" class="profile-img">
+                                        <span class="role-badge analyst-badge">ANALYST</span>
+                                    </div>
+                                    <div class="team-info">
+                                        <div class="team-name">Kanaka C</div>
+                                        <div class="team-role">Security Analyst & Frontend Engineer</div>
+                                        <div class="team-sub">Dept of CSE • Sem VI</div>
+                                    </div>
+                                </div>
+
+                                <!-- Raghunandan T V -->
+                                <div class="team-profile-card">
+                                    <div class="profile-frame">
+                                        <img src="/static/Project_Assets/Raghu_TV_DP.png" alt="Raghunandan T V" class="profile-img">
+                                        <span class="role-badge dev-badge">BACKEND</span>
+                                    </div>
+                                    <div class="team-info">
+                                        <div class="team-name">Raghunandan T V</div>
+                                        <div class="team-role">Backend Engineer & Threat Intelligence</div>
+                                        <div class="team-sub">Dept of CSE • Sem VI</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="widget-box">
+                        <div class="widget-header">
+                            <h3>🚀 Key Architecture & Capabilities</h3>
+                            <span class="widget-tag">Platform Features</span>
+                        </div>
+                        <div class="widget-body">
+                            <ul class="tech-capabilities">
+                                <li><strong style="color: var(--accent-blue);">Multi-Protocol Decoy Sensors:</strong> SSH (Port 2222), Web Admin Decoy (Port 8080), TCP Probes (Ports 21, 23, 3389).</li>
+                                <li><strong style="color: var(--accent-green);">Honeytoken Vault:</strong> AWS Decoy API keys, DB recovery paths, and fake credentials.</li>
+                                <li><strong style="color: var(--accent-purple);">MITRE ATT&CK Framework Integration:</strong> Automatic TTP classification and risk scoring.</li>
+                                <li><strong style="color: var(--accent-amber);">Active Defense & Quarantine:</strong> Real-time automated IP blocking & adversary isolation.</li>
+                                <li><strong style="color: var(--accent-blue);">AI Threat Synthesizer:</strong> Automated incident response reports for SOC analysts.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- AI REPORT MODAL -->
+    <div class="modal-overlay" id="aiReportModal">
+        <div class="modal-card">
+            <div class="modal-card-header">
+                <h3>AI Threat Synthesizer Forensic Report</h3>
+                <span class="modal-close-btn" id="btnCloseModal">&times;</span>
+            </div>
+            <div class="modal-card-body" id="modalReportContent">
+                <p>Synthesizing attacker profile & forensic logs...</p>
+            </div>
+            <div class="modal-card-footer">
+                <button class="btn btn-secondary" id="btnModalClose2">Close Report</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Scripts -->
+    <script src="/static/js/websocket.js"></script>
+    <script src="/static/js/charts.js"></script>
+    <script src="/static/js/mitre.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,609 @@
+/*
+ * Enterprise Cloud SIEM Main Application Logic
+ * Integrates Leaflet Attacker Origin World Map, Light/Dark Theme Switcher,
+ * Collapsible Sidebar, and Telemetry Dispatcher.
+ */
+
+let leafMap = null;
+let mapMarkersLayer = null;
+let threatsMap = null;
+let threatsMarkersLayer = null;
+let tileLayer1 = null;
+let tileLayer2 = null;
+
+document.addEventListener("DOMContentLoaded", () => {
+    initTheme();
+    initSiemCharts();
+    initLeafletMap();
+    fetchDashboardData();
+    setupEventListeners();
+    initWebSocketConnection();
+});
+
+// THEME SWITCHER LOGIC (Light / Dark Mode)
+function initTheme() {
+    const savedTheme = localStorage.getItem('siem_theme') || 'dark';
+    setTheme(savedTheme);
+}
+
+function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('siem_theme', theme);
+
+    // Update Leaflet Map Tiles if map exists
+    if (leafMap || threatsMap) {
+        updateMapTiles(theme);
+    }
+}
+
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    const newTheme = current === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+}
+
+// ATTACKER ORIGIN WORLD MAP INITIALIZATION (Leaflet.js)
+function initLeafletMap() {
+    const container1 = document.getElementById('attackerWorldMap');
+    if (container1) {
+        leafMap = L.map('attackerWorldMap', { zoomControl: true, attributionControl: false }).setView([20, 0], 2);
+        mapMarkersLayer = L.layerGroup().addTo(leafMap);
+    }
+
+    const container2 = document.getElementById('threatsWorldMap');
+    if (container2) {
+        threatsMap = L.map('threatsWorldMap', { zoomControl: true, attributionControl: false }).setView([20, 0], 2);
+        threatsMarkersLayer = L.layerGroup().addTo(threatsMap);
+    }
+
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    updateMapTiles(currentTheme);
+}
+
+function updateMapTiles(theme) {
+    const tileUrl = theme === 'dark'
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+
+    if (leafMap) {
+        if (tileLayer1) leafMap.removeLayer(tileLayer1);
+        tileLayer1 = L.tileLayer(tileUrl, { maxZoom: 18 }).addTo(leafMap);
+    }
+
+    if (threatsMap) {
+        if (tileLayer2) threatsMap.removeLayer(tileLayer2);
+        tileLayer2 = L.tileLayer(tileUrl, { maxZoom: 18 }).addTo(threatsMap);
+    }
+}
+
+function updateMapMarkers(attackers) {
+    if (mapMarkersLayer) mapMarkersLayer.clearLayers();
+    if (threatsMarkersLayer) threatsMarkersLayer.clearLayers();
+
+    if (!attackers || attackers.length === 0) return;
+
+    attackers.forEach(a => {
+        const lat = a.lat || 12.9716;
+        const lng = a.lng || 77.5946;
+        const flag = a.flag || "🌐";
+        const country = a.country || "Unknown Origin";
+        const score = a.max_risk_score || 50;
+
+        const circleColor = score >= 75 ? '#ef4444' : (score >= 50 ? '#f59e0b' : '#3b82f6');
+
+        const popupHTML = `
+            <div style="font-family: sans-serif; padding: 4px;">
+                <h4 style="margin: 0 0 4px 0; font-size: 13px;">${flag} ${country}</h4>
+                <p style="margin: 0; font-size: 11px; color: #64748b;"><b>IP:</b> <code style="color: #0070f3;">${a.ip}</code></p>
+                <p style="margin: 2px 0; font-size: 11px; color: #64748b;"><b>Attempts:</b> ${a.total_attempts} | <b>Risk Score:</b> <strong style="color:${circleColor}">${score}/100</strong></p>
+                <p style="margin: 4px 0 0 0;"><button onclick="inspectAIReport('${a.ip}')" style="background:#0070f3; color:#fff; border:none; padding:3px 8px; border-radius:4px; font-size:10px; cursor:pointer;">AI Report</button></p>
+            </div>
+        `;
+
+        if (leafMap && mapMarkersLayer) {
+            const marker1 = L.circleMarker([lat, lng], {
+                radius: 8 + Math.min(10, a.total_attempts),
+                fillColor: circleColor,
+                color: '#ffffff',
+                weight: 2,
+                opacity: 0.9,
+                fillOpacity: 0.7
+            });
+            marker1.bindPopup(popupHTML);
+            mapMarkersLayer.addLayer(marker1);
+        }
+
+        if (threatsMap && threatsMarkersLayer) {
+            const marker2 = L.circleMarker([lat, lng], {
+                radius: 8 + Math.min(10, a.total_attempts),
+                fillColor: circleColor,
+                color: '#ffffff',
+                weight: 2,
+                opacity: 0.9,
+                fillOpacity: 0.7
+            });
+            marker2.bindPopup(popupHTML);
+            threatsMarkersLayer.addLayer(marker2);
+        }
+    });
+}
+
+function initWebSocketConnection() {
+    new TelemetryWebSocket((event) => {
+        prependTelemetryRow(event);
+        fetchDashboardData();
+    }, (connected) => {
+        // Connected
+    });
+}
+
+async function fetchDashboardData() {
+    try {
+        const [statusRes, logsRes, attackersRes, mitreRes, honeytokensRes] = await Promise.all([
+            fetch("/api/status"),
+            fetch("/api/logs?limit=50"),
+            fetch("/api/attackers"),
+            fetch("/api/mitre"),
+            fetch("/api/honeytokens")
+        ]);
+
+        const status = await statusRes.json();
+        const logs = await logsRes.json();
+        const attackers = await attackersRes.json();
+        const mitre = await mitreRes.json();
+        const honeytokens = await honeytokensRes.json();
+
+        // Update Stat Counters
+        document.getElementById("statTotalAttacks").innerText = status.metrics.total_attacks_logged;
+        document.getElementById("statAuditEvents").innerText = Math.floor(status.metrics.total_attacks_logged * 0.4);
+        document.getElementById("statEndpointEvents").innerText = Math.floor(status.metrics.total_attacks_logged * 0.6);
+        document.getElementById("statQuarantined").innerText = status.metrics.quarantined_ips;
+
+        // Render Tables & SIEM Charts
+        renderTelemetryTable(logs);
+        updateSiemCharts(logs);
+        renderMitreGrid(mitre);
+        renderAttackersTable(attackers);
+        renderHoneytokenList(honeytokens);
+
+        // Fetch Decoys
+        fetchDecoys();
+
+        // Update World Map Markers
+        updateMapMarkers(attackers);
+
+    } catch (err) {
+        console.error("[Aegis Cloud SIEM] Fetch error:", err);
+    }
+}
+
+async function fetchDecoys() {
+    try {
+        const res = await fetch("/api/decoys");
+        if (!res.ok) {
+            console.warn("Decoys endpoint returned error:", res.status);
+            return;
+        }
+        const decoys = await res.json();
+        if (Array.isArray(decoys)) {
+            renderDecoyList(decoys);
+        }
+    } catch (err) {
+        console.error("Error fetching decoys:", err);
+    }
+}
+
+function renderDecoyList(decoys) {
+    const container = document.getElementById("decoyListContainer");
+    if (!container) return;
+
+    if (!Array.isArray(decoys) || decoys.length === 0) {
+        container.innerHTML = `<div style="color: var(--text-muted); font-size: 12px; padding: 20px;">No decoys configured.</div>`;
+        return;
+    }
+
+    container.innerHTML = decoys.map(d => {
+        const isEnabled = d.enabled;
+        const statusBadge = isEnabled
+            ? `<span class="decoy-badge active" style="background: rgba(16, 185, 129, 0.15); color: #10b981; padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 11px;">🟢 ACTIVE & LISTENING</span>`
+            : `<span class="decoy-badge disabled" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 11px;">🔴 DISABLED AT LAUNCH</span>`;
+
+        return `
+            <div class="decoy-card">
+                <div class="decoy-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                    <div>
+                        <div class="decoy-name" style="font-weight: 700; font-size: 14px; color: var(--text-primary);">${escapeHTML(d.name)}</div>
+                        <div style="font-size: 11px; color: var(--accent-blue); font-family: monospace; margin-top: 2px;">
+                            ${escapeHTML(d.type)} ${d.port ? `• Port ${d.port}` : ''}
+                        </div>
+                    </div>
+                    ${statusBadge}
+                </div>
+                <div class="decoy-desc" style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">${escapeHTML(d.description || '')}</div>
+                <div class="decoy-card-footer" style="font-size: 11px; color: var(--text-muted); border-top: 1px solid var(--border-subtle); padding-top: 8px; display: flex; justify-content: space-between;">
+                    <span>Decoy ID: <code>${d.id}</code></span>
+                    <span>Port State: <strong style="color: ${isEnabled ? '#10b981' : '#ef4444'};">${isEnabled ? 'BOUND (OPEN)' : 'UNBOUND (CLOSED)'}</strong></span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function toggleDecoyStatus(decoyId, enabled) {
+    try {
+        await fetch("/api/decoys/toggle", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: decoyId, enabled: enabled })
+        });
+        fetchDecoys();
+    } catch (err) {
+        console.error("Error toggling decoy:", err);
+    }
+}
+
+function renderTelemetryTable(logs) {
+    const tbody = document.getElementById("telemetryTableBody");
+    if (!tbody) return;
+
+    if (!logs || logs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty-cell">Awaiting SIEM log telemetry...</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = logs.map(l => createTelemetryRowHTML(l)).join('');
+}
+
+function prependTelemetryRow(l) {
+    const tbody = document.getElementById("telemetryTableBody");
+    if (!tbody) return;
+
+    if (tbody.children.length === 1 && tbody.children[0].cells.length === 1) {
+        tbody.innerHTML = "";
+    }
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = createTelemetryRowHTML(l, true);
+    tbody.insertBefore(tr, tbody.firstChild);
+
+    tr.style.background = "rgba(0, 112, 243, 0.1)";
+    setTimeout(() => { tr.style.background = "transparent"; }, 1500);
+}
+
+function createTelemetryRowHTML(l, innerOnly = false) {
+    const timestampStr = l.timestamp ? l.timestamp.replace("T", " ").substring(0, 19) : "N/A";
+    const payloadSnippet = l.payload ? (l.payload.length > 32 ? l.payload.substring(0, 32) + "..." : l.payload) : "-";
+    const flag = l.flag || "🌐";
+    const country = l.country || "Unknown";
+
+    const content = `
+        <td class="font-mono" style="color: var(--text-muted); font-size: 11px;">${timestampStr}</td>
+        <td><span style="margin-right: 4px;">${flag}</span> ${country}</td>
+        <td class="font-mono" style="color: var(--accent-blue); font-weight: 600;">${l.attacker_ip}</td>
+        <td><span class="widget-tag">${l.decoy_service}</span></td>
+        <td class="font-mono" style="font-size: 11px;">${escapeHTML(payloadSnippet)}</td>
+        <td><span class="font-mono" style="color: var(--accent-amber); font-weight: bold;">${l.mitre_id || 'T1046'}</span> ${l.mitre_name || ''}</td>
+        <td><span class="sev-badge sev-${l.severity}">${l.severity}</span></td>
+        <td>
+            <button class="btn btn-sm btn-secondary" onclick="inspectAIReport('${l.attacker_ip}')">AI Report</button>
+        </td>
+    `;
+    return innerOnly ? content : `<tr>${content}</tr>`;
+}
+
+function renderAttackersTable(attackers) {
+    const tbody = document.getElementById("attackersTableBody");
+    if (!tbody) return;
+
+    if (!attackers || attackers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-cell">No adversary profiles recorded.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = attackers.map(a => {
+        const isQuarantined = a.status === 'QUARANTINED';
+        const statusBadge = isQuarantined
+            ? `<span class="sev-badge sev-CRITICAL">QUARANTINED</span>`
+            : `<span class="sev-badge sev-LOW">MONITORING</span>`;
+
+        const actionBtn = isQuarantined
+            ? `<button class="btn btn-sm btn-secondary" onclick="toggleIPBlock('${a.ip}', 'UNBLOCK')">Unblock</button>`
+            : `<button class="btn btn-sm btn-secondary" onclick="toggleIPBlock('${a.ip}', 'BLOCK')">Quarantine</button>`;
+
+        const flag = a.flag || "🌐";
+        const country = a.country || "Unknown";
+
+        return `
+            <tr>
+                <td class="font-mono" style="color: var(--accent-blue); font-weight: 600;">${a.ip}</td>
+                <td>${flag} ${country}</td>
+                <td class="font-mono" style="font-size: 11px; color: var(--text-muted);">${(a.last_seen || '').replace('T', ' ').substring(0, 16)}</td>
+                <td class="font-mono" style="text-align: center;">${a.total_attempts}</td>
+                <td class="font-mono" style="color: ${a.max_risk_score >= 75 ? '#ef4444' : '#10b981'}; font-weight: bold;">${a.max_risk_score} / 100</td>
+                <td>${statusBadge}</td>
+                <td>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="btn btn-sm btn-primary" onclick="inspectAIReport('${a.ip}')">Inspect</button>
+                        ${actionBtn}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderHoneytokenList(tokens) {
+    const container = document.getElementById("honeytokenList");
+    if (!container) return;
+
+    if (!tokens || tokens.length === 0) {
+        container.innerHTML = `<div class="empty-cell">No honeytokens configured.</div>`;
+        return;
+    }
+
+    container.innerHTML = tokens.map(t => {
+        const isHit = t.hit_count > 0;
+        return `
+            <div class="ht-card">
+                <div style="display: flex; justify-content: space-between;">
+                    <span class="ht-name">${t.name}</span>
+                    <span class="ht-type">${t.type}</span>
+                </div>
+                <div class="ht-val">${t.token_value}</div>
+                <div class="ht-status ${isHit ? 'hit' : ''}">
+                    ${isHit ? `🚨 TRIGGERED (${t.hit_count} Hits)` : '🟢 ACTIVE'}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function inspectAIReport(ip) {
+    const modal = document.getElementById("aiReportModal");
+    const content = document.getElementById("modalReportContent");
+
+    content.innerHTML = `<p style="text-align:center; color: var(--text-secondary);">Synthesizing AI threat intelligence report for <b>${ip}</b>...</p>`;
+    modal.classList.add("open");
+
+    try {
+        const res = await fetch(`/api/ai-report/${ip}`);
+        const data = await res.json();
+
+        content.innerHTML = `
+            <div style="margin-bottom: 16px;">
+                <p><b>Attacker IP:</b> <span class="font-mono" style="color: var(--accent-blue);">${data.attacker_ip}</span> | <b>Risk Score:</b> <span class="sev-badge sev-${data.threat_level}">${data.max_risk_score} / 100</span></p>
+                <p style="margin-top: 4px;"><b>Intent Classification:</b> <span style="color: var(--accent-amber); font-weight: 600;">${data.intent_classification}</span></p>
+            </div>
+
+            <div style="background: var(--bg-subtle); padding: 14px; border-left: 3px solid var(--accent-blue); border-radius: 6px; margin-bottom: 16px;">
+                <p><strong>Executive Summary:</strong></p>
+                <p style="color: var(--text-secondary); margin-top: 4px;">${data.summary}</p>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <p><strong>Mapped MITRE TTPs:</strong></p>
+                <p style="margin-top: 4px;">${(data.mitre_techniques || []).map(t => `<span class="widget-tag" style="margin-right: 4px; font-family: var(--font-mono);">${t}</span>`).join('')}</p>
+            </div>
+
+            <div>
+                <p><strong>Recommended Action Plan:</strong></p>
+                <ul style="padding-left: 20px; color: var(--text-secondary); margin-top: 4px;">
+                    ${(data.recommendations || []).map(r => `<li style="margin-bottom: 4px;">${r}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    } catch (err) {
+        content.innerHTML = `<p style="color: var(--accent-red);">Error generating report: ${err.message}</p>`;
+    }
+}
+
+async function toggleIPBlock(ip, action) {
+    try {
+        await fetch("/api/quarantine/toggle", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ip: ip, action: action, reason: "Manual SIEM Admin Action" })
+        });
+        fetchDashboardData();
+    } catch (err) {
+        alert("Error toggling status: " + err.message);
+    }
+}
+
+function setupEventListeners() {
+    // Theme Switcher Toggle
+    const themeBtn = document.getElementById("themeToggle");
+    if (themeBtn) {
+        themeBtn.addEventListener("click", toggleTheme);
+    }
+
+    // Sidebar Collapse / Mobile Toggle
+    const sidebarToggle = document.getElementById("sidebarToggle");
+    const sidebar = document.getElementById("siemSidebar");
+    const overlay = document.getElementById("sidebarOverlay");
+
+    function closeMobileSidebar() {
+        if (sidebar) {
+            sidebar.classList.remove("mobile-open");
+            sidebar.classList.remove("open");
+        }
+        if (overlay) overlay.classList.remove("active");
+    }
+
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener("click", () => {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle("mobile-open");
+                if (overlay) overlay.classList.toggle("active");
+            } else {
+                sidebar.classList.toggle("collapsed");
+            }
+            setTimeout(() => {
+                if (leafMap) leafMap.invalidateSize();
+                if (threatsMap) threatsMap.invalidateSize();
+            }, 300);
+        });
+    }
+
+    if (overlay) {
+        overlay.addEventListener("click", closeMobileSidebar);
+    }
+
+    // Brand Logo Button Click -> Return to Home Dashboard
+    const brandLogoBtn = document.getElementById("brandLogoBtn");
+    if (brandLogoBtn) {
+        brandLogoBtn.addEventListener("click", () => {
+            const summaryTab = document.querySelector(".siem-sidebar .nav-item[data-tab='summary']");
+            if (summaryTab) summaryTab.click();
+            closeMobileSidebar();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
+
+    // Sidebar Navigation Tab Switching
+    const navItems = document.querySelectorAll(".siem-sidebar .nav-item[data-tab]");
+    navItems.forEach(item => {
+        item.addEventListener("click", (e) => {
+            e.preventDefault();
+            const tabName = item.getAttribute("data-tab");
+
+            navItems.forEach(n => n.classList.remove("active"));
+            item.classList.add("active");
+
+            const tabContents = document.querySelectorAll(".tab-content");
+            tabContents.forEach(tc => tc.classList.remove("active"));
+
+            const targetTab = document.getElementById("tab" + tabName.charAt(0).toUpperCase() + tabName.slice(1));
+            if (targetTab) {
+                targetTab.classList.add("active");
+            } else {
+                // Default to summary tab
+                document.getElementById("tabSummary").classList.add("active");
+            }
+
+            closeMobileSidebar();
+
+            setTimeout(() => {
+                if (leafMap) leafMap.invalidateSize();
+                if (threatsMap) threatsMap.invalidateSize();
+            }, 200);
+        });
+    });
+
+    // Tester / Attacker Suite Button
+    const btnTester = document.getElementById("btnLaunchTester");
+    if (btnTester) {
+        btnTester.addEventListener("click", async () => {
+            try {
+                btnTester.innerText = "⏳ Opening Tester GUI...";
+                btnTester.disabled = true;
+                const res = await fetch("/api/tester/launch", { method: "POST" });
+                const data = await res.json();
+                console.log("[Tester Suite]", data);
+            } catch (err) {
+                console.error("Error launching Tester GUI:", err);
+            } finally {
+                setTimeout(() => {
+                    btnTester.innerText = "🧪 Tester / Attacker";
+                    btnTester.disabled = false;
+                }, 1500);
+            }
+        });
+    }
+
+    // Simulator Button
+    const btnSim = document.getElementById("btnLaunchSim");
+    if (btnSim) {
+        btnSim.addEventListener("click", async () => {
+            btnSim.disabled = true;
+            btnSim.innerText = "⏳ Running...";
+            try {
+                await fetch("/api/simulator/launch", { method: "POST" });
+                setTimeout(() => {
+                    btnSim.disabled = false;
+                    btnSim.innerText = "⚡ Run Attack Simulator";
+                    fetchDashboardData();
+                }, 3000);
+            } catch (e) {
+                btnSim.disabled = false;
+                btnSim.innerText = "⚡ Run Attack Simulator";
+            }
+        });
+    }
+
+    // Reset Button
+    const btnReset = document.getElementById("btnResetData");
+    if (btnReset) {
+        btnReset.addEventListener("click", async () => {
+            if (confirm("Reset SIEM telemetry data?")) {
+                await fetch("/api/reset", { method: "POST" });
+                fetchDashboardData();
+            }
+        });
+    }
+
+    // Create Token Button
+    const btnCreateToken = document.getElementById("btnCreateToken");
+    if (btnCreateToken) {
+        btnCreateToken.addEventListener("click", async () => {
+            const name = prompt("Enter Honeytoken Name:", "Decoy Production Key");
+            if (name) {
+                await fetch("/api/honeytokens/create", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name: name, type: "API Key" })
+                });
+                fetchDashboardData();
+            }
+        });
+    }
+
+    // Academic Topbar Badge Click -> Switch to About Tab
+    const academicBtn = document.getElementById("academicBadgeBtn");
+    if (academicBtn) {
+        academicBtn.addEventListener("click", () => {
+            const aboutNavItem = document.querySelector(".siem-sidebar .nav-item[data-tab='about']");
+            if (aboutNavItem) {
+                aboutNavItem.click();
+            }
+        });
+    }
+
+    // Add Custom Decoy Form Handler
+    const formDecoy = document.getElementById("formAddCustomDecoy");
+    if (formDecoy) {
+        formDecoy.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const name = document.getElementById("customDecoyName").value;
+            const port = parseInt(document.getElementById("customDecoyPort").value, 10);
+            const type = document.getElementById("customDecoyType").value;
+
+            try {
+                await fetch("/api/decoys/add", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name: name, port: port, service_type: type })
+                });
+                formDecoy.reset();
+                fetchDecoys();
+            } catch (err) {
+                alert("Error adding custom decoy: " + err.message);
+            }
+        });
+    }
+
+    // Modal Close Buttons
+    const btnCloseModal = document.getElementById("btnCloseModal");
+    const btnModalClose2 = document.getElementById("btnModalClose2");
+    const modal = document.getElementById("aiReportModal");
+
+    if (btnCloseModal) btnCloseModal.addEventListener("click", () => modal.classList.remove("open"));
+    if (btnModalClose2) btnModalClose2.addEventListener("click", () => modal.classList.remove("open"));
+}
+
+function escapeHTML(str) {
+    if (!str) return '';
+    return str.replace(/[&<>'"]/g,
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+    );
+}

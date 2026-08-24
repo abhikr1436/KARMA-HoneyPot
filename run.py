@@ -1,3 +1,9 @@
+"""
+K.A.R.M.A Cloud SIEM Application Entry Point
+Team: Abhijeet Kumar, Kanaka C, Raghunandan T V
+Department of Computer Science & Engineering
+"""
+
 import sys
 import os
 

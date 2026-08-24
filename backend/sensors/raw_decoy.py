@@ -1,6 +1,6 @@
 """
-Raw Port Decoy Sensor for Aegis-SOC
-Listens on ports 21 (FTP), 23 (Telnet), 3389 (RDP) to catch network port scans.
+K.A.R.M.A Network Decoy Sensors (Ports 21 FTP, 23 Telnet, 3389 RDP)
+Captures network port scans, banner enumeration, and unencrypted Telnet/FTP probes.
 """
 
 import socket

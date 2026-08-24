@@ -1,7 +1,109 @@
-"""
-AI Threat Synthesizer & Autonomous SOC Analyst
-Analyzes raw attack events and generates executive incident reports, intent classification, and remediation steps.
-"""
+def generate_single_event_ai_report(event):
+    """
+    Generates a dedicated, highly detailed AI Forensic Report for a SINGLE specific attack event log.
+    Includes exact executed hacker commands, IP location, MITRE ATT&CK mapping, intent breakdown, and SOC remediation.
+    """
+    if not event:
+        return {}
+
+    ip = event.get("attacker_ip", "0.0.0.0")
+    service = event.get("decoy_service", "UNKNOWN")
+    port = event.get("port", "N/A")
+    payload = event.get("payload", "No raw payload recorded")
+    attack_type = event.get("attack_type", "Network Attack")
+    mitre_id = event.get("mitre_id", "T1046")
+    mitre_name = event.get("mitre_name", "Network Service Discovery")
+    mitre_tactic = event.get("mitre_tactic", "Reconnaissance")
+    risk_score = event.get("risk_score", 50)
+    severity = event.get("severity", "MEDIUM")
+    timestamp = event.get("timestamp", "N/A")
+
+    from backend.database import get_geo_info
+    geo = get_geo_info(ip)
+
+    payload_lower = payload.lower()
+
+    # Dynamic Intent & Detailed Forensic Summary Analysis
+    if "cat /etc/passwd" in payload_lower or "cat /etc/shadow" in payload_lower:
+        intent = "Credential Harvesting & Password Database Leak Attempt"
+        summary = (f"CRITICAL FORENSIC INCIDENT: The adversary at {ip} connected to decoy service '{service}' "
+                   f"on Port {port} and executed an OS credential extraction payload: '{payload}'. "
+                   f"The attacker attempted to read Linux account password hashes to compromise system access.")
+        remediations = [
+            f"Block IP {ip} at boundary firewall and quarantine network interface.",
+            "Audit all Linux system account credentials for weak or default passwords.",
+            "Ensure SSH root logins are disabled (`PermitRootLogin no` in /etc/ssh/sshd_config)."
+        ]
+    elif any(cmd in payload_lower for cmd in ["whoami", "id", "uname", "hostname", "pwd"]):
+        intent = "System & Privilege Discovery Reconnaissance"
+        summary = (f"HIGH SEVERITY INCIDENT: Attacker from {ip} reached decoy service '{service}' (Port {port}) "
+                   f"and executed post-exploitation discovery commands: '{payload}'. "
+                   f"The adversary was attempting to map active user privileges and system OS release parameters.")
+        remediations = [
+            f"Isolate IP address {ip} via K.A.R.M.A Active Defense Quarantine.",
+            "Audit SSH and Telnet session logs for unauthorized concurrent logins.",
+            "Enforce strict Multi-Factor Authentication (MFA) across all administrative management portals."
+        ]
+    elif "user" in payload_lower or "pass" in payload_lower or "login" in payload_lower:
+        intent = "Interactive Authentication Brute-Force & Credential Probing"
+        summary = (f"MEDIUM-HIGH SEVERITY: Attacker from {ip} attempted authentication brute-forcing against "
+                   f"decoy service '{service}' on Port {port} with input payload: '{payload}'. "
+                   f"The attempt was trapped by K.A.R.M.A deception listeners before gaining internal network access.")
+        remediations = [
+            "Apply automated IP rate limiting and Fail2Ban rules on public authentication services.",
+            "Rotate any exposed user passwords that match dictionary attack patterns."
+        ]
+    elif any(sqli in payload_lower for sqli in ["select", "or 1=1", "' or", "union", "drop table", "insert"]):
+        intent = "Web Application Vulnerability Exploitation (SQL Injection / OWASP Top 10)"
+        summary = (f"HIGH SEVERITY WEB ATTACK: Attacker from {ip} submitted malicious SQL Injection exploit vectors "
+                   f"against Web Decoy '{service}' on Port {port}: '{payload}'. "
+                   f"The attack intended to bypass web login forms or exfiltrate database records.")
+        remediations = [
+            "Deploy Web Application Firewall (WAF) SQLi inspection rules.",
+            "Ensure parameterised database queries (Prepared Statements) are enforced across production APIs."
+        ]
+    elif "api" in payload_lower or "token" in payload_lower or "honeytoken" in payload_lower or "key" in payload_lower:
+        intent = "Targeted Honeytoken API Credential Exfiltration"
+        summary = (f"CRITICAL HONEYTOKEN BREACH ALERT: Attacker from {ip} accessed decoy API honeytoken endpoint "
+                   f"'{service}' (Port {port}): '{payload}'. "
+                   f"This confirms active targeted reconnaissance or credential harvesting using decoy keys.")
+        remediations = [
+            f"Immediately quarantine IP {ip} across all cloud API gateways.",
+            "Revoke compromised API token keys and audit IAM policy attachments."
+        ]
+    else:
+        intent = "Network Service Probing & Scanner Fingerprinting"
+        summary = (f"SERVICE RECONNAISSANCE: Attacker from {ip} probed decoy listener '{service}' "
+                   f"on Port {port} with payload/interaction: '{payload}'. "
+                   f"Behavior matches automated network port scanning tools (Nmap / Masscan / ZMap).")
+        remediations = [
+            f"Maintain continuous perimeter monitoring for IP {ip}.",
+            "Ensure unrequired management ports remain closed or restricted to VPN ranges."
+        ]
+
+    return {
+        "event_id": event.get("id"),
+        "timestamp": timestamp,
+        "attacker_ip": ip,
+        "country": geo.get("country", "Unknown"),
+        "city": geo.get("city", "Unknown"),
+        "flag": geo.get("flag", "🌐"),
+        "lat": geo.get("lat"),
+        "lng": geo.get("lng"),
+        "decoy_service": service,
+        "port": port,
+        "attack_type": attack_type,
+        "executed_payload": payload,
+        "mitre_id": mitre_id,
+        "mitre_name": mitre_name,
+        "mitre_tactic": mitre_tactic,
+        "risk_score": risk_score,
+        "severity": severity,
+        "intent_classification": intent,
+        "forensic_summary": summary,
+        "recommendations": remediations,
+        "action_taken": f"Event recorded & isolated by K.A.R.M.A Active Defense Engine."
+    }
 
 def generate_ai_threat_summary(attacker_ip, logs, attacker_profile):
     if not logs:
@@ -45,7 +147,7 @@ def generate_ai_threat_summary(attacker_ip, logs, attacker_profile):
         threat_level = "HIGH"
         remediations = [
             "Deploy Web Application Firewall (WAF) filtering rules.",
-            "Block IP {attacker_ip} across public web endpoints.",
+            f"Block IP {attacker_ip} across public web endpoints.",
             "Inspect web access logs for secondary payloads."
         ]
     elif "T1110" in mitre_ids:

@@ -1,6 +1,6 @@
 """
-Fake Web Admin Decoy Sensor for Aegis-SOC
-Monitors port 8080 for web attacks (SQLi, XSS, Path Traversal, Honeytokens).
+K.A.R.M.A Web Application Honeypot Sensor (Port 8080)
+Simulates vulnerability web services, traps SQL Injection, XSS, and Path Traversal probes.
 """
 
 from fastapi import FastAPI, Request, Form

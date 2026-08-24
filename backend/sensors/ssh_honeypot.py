@@ -1,19 +1,44 @@
 """
-Fake SSH Decoy Sensor for Aegis-SOC
-Traps SSH authentication attempts and logs interactive command telemetry.
+K.A.R.M.A OpenSSH Honeypot Decoy Sensor (Port 2222)
+Handles OpenSSH key exchange via Paramiko, traps authentication brute-force attempts,
+and records post-exploitation bash command execution telemetry.
 """
 
+import os
 import socket
 import threading
 import time
+import logging
+import paramiko
 from backend.config import PORT_SSH_HONEYPOT
 from backend.engine.mitre_mapper import map_payload_to_mitre
 from backend.engine.threat_score import calculate_event_risk
-from backend.database import log_attack_event
+from backend.database import log_attack_event, get_geo_info
 from backend.engine.active_defense import active_defense_engine
+
+# Silence Paramiko background transport exception logging to keep console output clean
+logging.getLogger("paramiko.transport").setLevel(logging.CRITICAL)
 
 # Global instance reference for stopping
 _ssh_honeypot_instance = None
+
+# Persistent RSA Host Key for Paramiko SSH protocol handshake
+KEY_FILE = os.path.join(os.path.dirname(__file__), "ssh_host_rsa_key")
+
+def get_persistent_host_key():
+    if os.path.exists(KEY_FILE):
+        try:
+            return paramiko.RSAKey(filename=KEY_FILE)
+        except Exception:
+            pass
+    key = paramiko.RSAKey.generate(2048)
+    try:
+        key.write_private_key_file(KEY_FILE)
+    except Exception:
+        pass
+    return key
+
+HOST_KEY = get_persistent_host_key()
 
 FAKE_SHELL_RESPONSES = {
     "whoami": "root\r\n",
@@ -27,6 +52,73 @@ FAKE_SHELL_RESPONSES = {
     "pwd": "/root\r\n",
     "hostname": "aegis-soc-gateway\r\n",
 }
+
+class ParamikoHoneypotInterface(paramiko.ServerInterface):
+    def __init__(self, client_ip, broadcast_cb=None, port=2222):
+        self.client_ip = client_ip
+        self.broadcast_cb = broadcast_cb
+        self.port = port
+        self.event_event = threading.Event()
+
+    def check_channel_request(self, kind, chanid):
+        if kind == 'session':
+            return paramiko.OPEN_SUCCEEDED
+        return paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
+
+    def check_auth_password(self, username, password):
+        payload_info = f"SSH Login Attempt: USER '{username}' / PASS '{password}'"
+        mitre = map_payload_to_mitre("SSH_HONEYPOT", "ssh_command_execution", payload_info)
+        score, severity = calculate_event_risk(mitre['risk_score'])
+
+        log_id = log_attack_event(
+            attacker_ip=self.client_ip,
+            port=self.port,
+            decoy_service="SSH_HONEYPOT",
+            attack_type="SSH Credential Brute-Force",
+            payload=payload_info,
+            mitre_id="T1110",
+            mitre_name="Brute Force Authentication",
+            mitre_tactic="Credential Access",
+            risk_score=score,
+            severity=severity
+        )
+
+        geo = get_geo_info(self.client_ip)
+        quarantined, _ = active_defense_engine.process_event(self.client_ip, score, "SSH Brute Force")
+
+        if self.broadcast_cb:
+            self.broadcast_cb({
+                "id": log_id,
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "attacker_ip": self.client_ip,
+                "port": self.port,
+                "decoy_service": "SSH_HONEYPOT",
+                "attack_type": "SSH Credential Brute-Force",
+                "payload": payload_info,
+                "mitre_id": "T1110",
+                "mitre_name": "Brute Force Authentication",
+                "mitre_tactic": "Credential Access",
+                "risk_score": score,
+                "severity": severity,
+                "quarantined": quarantined,
+                "country": geo['country'],
+                "city": geo['city'],
+                "lat": geo['lat'],
+                "lng": geo['lng'],
+                "flag": geo['flag']
+            })
+
+        return paramiko.AUTH_SUCCESSFUL
+
+    def check_auth_publickey(self, username, key):
+        return paramiko.AUTH_SUCCESSFUL
+
+    def check_channel_pty_request(self, channel, term, modes, width, height, pixelwidth, pixelheight):
+        return True
+
+    def check_channel_shell_request(self, channel):
+        self.event_event.set()
+        return True
 
 class SSHHoneypotServer:
     def __init__(self, host="0.0.0.0", port=PORT_SSH_HONEYPOT, broadcast_callback=None):
@@ -53,7 +145,7 @@ class SSHHoneypotServer:
             self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.server_socket.bind((self.host, self.port))
-            self.server_socket.listen(5)
+            self.server_socket.listen(10)
             print(f"[SSH Decoy Sensor] Listening on port {self.port}...")
 
             while self.running:
@@ -68,96 +160,197 @@ class SSHHoneypotServer:
 
     def _handle_client(self, client_sock, client_ip):
         try:
-            # Send fake SSH Banner
-            banner = b"SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.1\r\n"
-            client_sock.sendall(banner)
-            client_sock.settimeout(6.0)
+            # First peek to see if client sends SSH handshake or raw data
+            transport = paramiko.Transport(client_sock)
+            transport.add_server_key(HOST_KEY)
+            server = ParamikoHoneypotInterface(client_ip, self.broadcast_callback, self.port)
 
-            # Prompt simulation loop
+            try:
+                transport.start_server(server=server)
+            except Exception:
+                # Log Port Scan Event & Fallback to raw socket handling
+                self._log_scan_probe(client_ip)
+                self._handle_raw_client(client_sock, client_ip)
+                return
+
+            channel = transport.accept(15)
+            if channel is None:
+                self._log_scan_probe(client_ip)
+                transport.close()
+                return
+
+            server.event_event.wait(10)
+
+            # Send welcome prompt
+            channel.send(b"\r\nWelcome to Aegis Linux Security Gateway 22.04 LTS\r\n\r\n")
+            channel.send(b"root@aegis-gateway:~# ")
+
+            buffer = ""
+            while self.running and not channel.closed:
+                data = channel.recv(1024)
+                if not data:
+                    break
+
+                text = data.decode('utf-8', errors='ignore')
+                for char in text:
+                    if char in ('\r', '\n'):
+                        channel.send(b"\r\n")
+                        cmd = buffer.strip()
+                        buffer = ""
+
+                        if cmd:
+                            if cmd.lower() in ["exit", "quit"]:
+                                channel.send(b"logout\r\n")
+                                channel.close()
+                                break
+
+                            self._process_command(cmd, client_ip)
+
+                            cmd_lower = cmd.lower()
+                            resp = FAKE_SHELL_RESPONSES.get(cmd_lower)
+                            if not resp:
+                                resp = f"bash: {cmd.split()[0]}: command not found\r\n"
+                            channel.send(resp.encode('utf-8'))
+
+                        channel.send(b"root@aegis-gateway:~# ")
+                    elif char == '\x7f' or char == '\x08': # Backspace
+                        if len(buffer) > 0:
+                            buffer = buffer[:-1]
+                            channel.send(b"\b \b")
+                    else:
+                        buffer += char
+                        channel.send(char.encode('utf-8'))
+
+            transport.close()
+        except Exception:
+            try:
+                client_sock.close()
+            except Exception:
+                pass
+
+    def _handle_raw_client(self, client_sock, client_ip):
+        try:
+            client_sock.sendall(b"SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.1\r\n")
             client_sock.sendall(b"root@aegis-gateway:~# ")
+            client_sock.settimeout(6.0)
 
             while self.running:
                 data = client_sock.recv(1024)
                 if not data:
                     break
-
                 raw_cmd = data.decode('utf-8', errors='ignore').strip()
                 if not raw_cmd:
                     continue
-
                 if raw_cmd.lower() in ["exit", "quit"]:
                     client_sock.sendall(b"logout\r\n")
                     break
 
-                payload_info = f"SSH Executed Command: '{raw_cmd}'"
+                self._process_command(raw_cmd, client_ip)
 
-                # Map executed command to MITRE TTP
-                mitre_key = "ssh_command_execution"
-                if "cat /etc" in raw_cmd or "shadow" in raw_cmd or "passwd" in raw_cmd:
-                    mitre_key = "credential_access"
-                elif "whoami" in raw_cmd or "id" in raw_cmd or "uname" in raw_cmd:
-                    mitre_key = "system_discovery"
-
-                mitre = map_payload_to_mitre("SSH_HONEYPOT", mitre_key, payload_info)
-                score, severity = calculate_event_risk(mitre['risk_score'])
-
-                # Log to DB
-                log_id = log_attack_event(
-                    attacker_ip=client_ip,
-                    port=self.port,
-                    decoy_service="SSH_HONEYPOT",
-                    attack_type="SSH Command Execution / Probe",
-                    payload=payload_info,
-                    mitre_id=mitre['mitre_id'],
-                    mitre_name=mitre['mitre_name'],
-                    mitre_tactic=mitre['mitre_tactic'],
-                    risk_score=score,
-                    severity=severity
-                )
-
-                from backend.database import get_geo_info
-                geo = get_geo_info(client_ip)
-
-                # Active Defense Check
-                quarantined, q_msg = active_defense_engine.process_event(client_ip, score, mitre['mitre_name'])
-
-                # Broadcast via WebSocket
-                if self.broadcast_callback:
-                    self.broadcast_callback({
-                        "id": log_id,
-                        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                        "attacker_ip": client_ip,
-                        "port": self.port,
-                        "decoy_service": "SSH_HONEYPOT",
-                        "attack_type": "SSH Command Execution / Probe",
-                        "payload": payload_info,
-                        "mitre_id": mitre['mitre_id'],
-                        "mitre_name": mitre['mitre_name'],
-                        "mitre_tactic": mitre['mitre_tactic'],
-                        "risk_score": score,
-                        "severity": severity,
-                        "quarantined": quarantined,
-                        "country": geo['country'],
-                        "city": geo['city'],
-                        "lat": geo['lat'],
-                        "lng": geo['lng'],
-                        "flag": geo['flag']
-                    })
-
-                # Determine fake shell response
                 cmd_lower = raw_cmd.lower()
-                response = FAKE_SHELL_RESPONSES.get(cmd_lower)
-                if not response:
-                    response = f"bash: {raw_cmd.split()[0]}: command not found\r\n"
+                resp = FAKE_SHELL_RESPONSES.get(cmd_lower)
+                if not resp:
+                    resp = f"bash: {raw_cmd.split()[0]}: command not found\r\n"
 
-                client_sock.sendall(response.encode('utf-8') + b"root@aegis-gateway:~# ")
-
+                client_sock.sendall(resp.encode('utf-8') + b"root@aegis-gateway:~# ")
             client_sock.close()
         except Exception:
             try:
                 client_sock.close()
             except Exception:
                 pass
+
+    def _process_command(self, raw_cmd, client_ip):
+        payload_info = f"SSH Executed Command: '{raw_cmd}'"
+        mitre_key = "ssh_command_execution"
+        if "cat /etc" in raw_cmd or "shadow" in raw_cmd or "passwd" in raw_cmd:
+            mitre_key = "credential_access"
+        elif "whoami" in raw_cmd or "id" in raw_cmd or "uname" in raw_cmd:
+            mitre_key = "system_discovery"
+
+        mitre = map_payload_to_mitre("SSH_HONEYPOT", mitre_key, payload_info)
+        score, severity = calculate_event_risk(mitre['risk_score'])
+
+        log_id = log_attack_event(
+            attacker_ip=client_ip,
+            port=self.port,
+            decoy_service="SSH_HONEYPOT",
+            attack_type="SSH Command Execution / Probe",
+            payload=payload_info,
+            mitre_id=mitre['mitre_id'],
+            mitre_name=mitre['mitre_name'],
+            mitre_tactic=mitre['mitre_tactic'],
+            risk_score=score,
+            severity=severity
+        )
+
+        geo = get_geo_info(client_ip)
+        quarantined, _ = active_defense_engine.process_event(client_ip, score, mitre['mitre_name'])
+
+        if self.broadcast_callback:
+            self.broadcast_callback({
+                "id": log_id,
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "attacker_ip": client_ip,
+                "port": self.port,
+                "decoy_service": "SSH_HONEYPOT",
+                "attack_type": "SSH Command Execution / Probe",
+                "payload": payload_info,
+                "mitre_id": mitre['mitre_id'],
+                "mitre_name": mitre['mitre_name'],
+                "mitre_tactic": mitre['mitre_tactic'],
+                "risk_score": score,
+                "severity": severity,
+                "quarantined": quarantined,
+                "country": geo['country'],
+                "city": geo['city'],
+                "lat": geo['lat'],
+                "lng": geo['lng'],
+                "flag": geo['flag']
+            })
+
+    def _log_scan_probe(self, client_ip):
+        payload_info = f"SSH Port Reconnaissance / TCP Banner Probe on Port {self.port}"
+        mitre = map_payload_to_mitre("SSH_HONEYPOT", "port_scan", payload_info)
+        score, severity = calculate_event_risk(mitre['risk_score'])
+
+        log_id = log_attack_event(
+            attacker_ip=client_ip,
+            port=self.port,
+            decoy_service="SSH_HONEYPOT",
+            attack_type="SSH Network Reconnaissance / Probe",
+            payload=payload_info,
+            mitre_id=mitre['mitre_id'],
+            mitre_name=mitre['mitre_name'],
+            mitre_tactic=mitre['mitre_tactic'],
+            risk_score=score,
+            severity=severity
+        )
+
+        geo = get_geo_info(client_ip)
+        quarantined, _ = active_defense_engine.process_event(client_ip, score, mitre['mitre_name'])
+
+        if self.broadcast_callback:
+            self.broadcast_callback({
+                "id": log_id,
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "attacker_ip": client_ip,
+                "port": self.port,
+                "decoy_service": "SSH_HONEYPOT",
+                "attack_type": "SSH Network Reconnaissance / Probe",
+                "payload": payload_info,
+                "mitre_id": mitre['mitre_id'],
+                "mitre_name": mitre['mitre_name'],
+                "mitre_tactic": mitre['mitre_tactic'],
+                "risk_score": score,
+                "severity": severity,
+                "quarantined": quarantined,
+                "country": geo['country'],
+                "city": geo['city'],
+                "lat": geo['lat'],
+                "lng": geo['lng'],
+                "flag": geo['flag']
+            })
 
     def stop(self):
         self.running = False

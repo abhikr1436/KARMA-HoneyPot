@@ -1,12 +1,18 @@
 """
-Main FastAPI Server & WebSockets Telemetry Dispatcher for Aegis-SOC
+K.A.R.M.A Cloud SIEM - Core Application Engine & API Gateway
+Authors: Abhijeet Kumar, Kanaka C, Raghunandan T V
+Project Guide: Mr. Subhash J R (Dept of Computer Science & Engineering)
+
+Handles FastAPI REST endpoints, WebSocket real-time telemetry streaming,
+honeytoken path traps, and session audit log management.
 """
 
 import os
 import asyncio
 import time
+import csv
 from typing import List
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Form, Request
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Form, Request, Body, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
@@ -15,9 +21,10 @@ from pydantic import BaseModel
 from backend.config import PORT_API, PORT_SSH_HONEYPOT, PORT_WEB_HONEYPOT, DECOY_PORTS
 from backend.database import (
     init_db, get_recent_logs, get_attackers_list, get_mitre_stats,
-    get_honeytokens, get_quarantine_list, clear_all_data, get_db
+    get_honeytokens, get_quarantine_list, clear_all_data, get_db, get_total_attack_count
 )
-from backend.engine.ai_analyst import generate_ai_threat_summary
+from backend.engine.ai_analyst import generate_ai_threat_summary, generate_single_event_ai_report
+from backend.engine.csv_logger import audit_csv_logger
 from backend.engine.active_defense import active_defense_engine
 from backend.honeytokens import create_honeytoken
 from backend.sensors.ssh_honeypot import SSHHoneypotServer
@@ -70,6 +77,11 @@ class ConnectionManager:
                 self.disconnect(connection)
 
     def sync_broadcast(self, data: dict):
+        try:
+            audit_csv_logger.log_event(data)
+        except Exception as e:
+            print("[CSV Logger Broadcast Error]:", e)
+
         if self.loop and self.loop.is_running():
             asyncio.run_coroutine_threadsafe(self.broadcast_json(data), self.loop)
 
@@ -97,11 +109,67 @@ class DecoyAddRequest(BaseModel):
 
 # API Routes
 @app.get("/")
-async def root():
-    index_path = os.path.join(FRONTEND_DIR, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return JSONResponse({"status": "Aegis-SOC API Running", "dashboard": "Frontend index.html not found"})
+async def root(request: Request):
+    client_ip = request.client.host if request.client else "127.0.0.1"
+
+    # Allow Localhost Access for Admin
+    if client_ip in ["127.0.0.1", "::1", "localhost"]:
+        index_path = os.path.join(FRONTEND_DIR, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+
+    # Block External Hacker IP & Trigger Honeytoken Trap
+    event_data = {
+        "attacker_ip": client_ip,
+        "port": 8000,
+        "decoy_service": "DECOY_API_KEYS",
+        "attack_type": "Unauthorized SIEM Console Scan",
+        "payload": f"External Host Attempted Unauthenticated Access to SIEM Console on Port 8000",
+        "mitre_id": "T1078",
+        "mitre_name": "Valid Accounts / Honeytoken Access",
+        "mitre_tactic": "Initial Access",
+        "risk_score": 90,
+        "severity": "CRITICAL"
+    }
+
+    log_attack_event(**event_data)
+    active_defense_engine.enforce_ip_quarantine(client_ip, "Unauthorized External Dashboard Probe")
+    event_data["quarantined"] = True
+    manager.sync_broadcast(event_data)
+
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>403 Forbidden - K.A.R.M.A Threat Deception Platform</title>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+        <style>
+            body {{ background: #090d16; color: #f3f4f6; font-family: 'Plus Jakarta Sans', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }}
+            .card {{ background: #101726; border: 1px solid #ef4444; padding: 40px; border-radius: 12px; width: 440px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }}
+            h2 {{ color: #ef4444; margin-top: 0; font-size: 20px; font-weight: 700; }}
+            .status-box {{ background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 13px; margin-top: 20px; line-height: 1.5; }}
+            .info {{ color: #9ca3af; font-size: 13px; margin-top: 15px; }}
+            .attribution {{ margin-top: 24px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px; font-size: 11px; color: #6b7280; }}
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h2>🚨 403 ACCESS FORBIDDEN</h2>
+            <p class="info">K.A.R.M.A Active Threat Deception Platform</p>
+            <div class="status-box">
+                ⚠️ UNAUTHORIZED EXTERNAL ACCESS DENIED<br>
+                <span style="font-size: 11px; font-weight: normal; color: #9ca3af;">Attacker IP: {client_ip} | Quarantined by Active Defense</span>
+            </div>
+            <p class="info">Remote access to the SIEM Control Console is restricted. Your IP has been logged and quarantined.</p>
+            <div class="attribution">
+                The Oxford Evening Polytechnic • Cyber Security (Sem VI)<br>
+                Guide: Mr. Subhash J R | Team: Abhijeet, Kanaka, Raghunandan
+            </div>
+        </div>
+    </body>
+    </html>
+    """, status_code=403)
 
 @app.get("/real-admin", response_class=HTMLResponse)
 async def real_admin_login():
@@ -160,56 +228,70 @@ async def real_admin_login():
     """)
 
 @app.post("/real-admin", response_class=HTMLResponse)
-async def real_admin_authenticate(username: str = Form(...), password: str = Form(...)):
-    if username == "admin@aegis-corp.com" and password == "AdminPass2026!":
-        return HTMLResponse("""
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <title>Aegis Secure Production Portal</title>
-            <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-            <style>
-                body { background: #090d16; color: #f3f4f6; font-family: 'Plus Jakarta Sans', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-                .card { background: #101726; border: 1px solid #10b981; padding: 40px; border-radius: 12px; width: 440px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-                h2 { color: #10b981; margin-top: 0; font-size: 20px; font-weight: 700; }
-                .status-box { background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); color: #10b981; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 14px; margin-top: 20px; line-height: 1.5; }
-                .info { color: #9ca3af; font-size: 13px; margin-top: 15px; }
-                a { color: #10b981; text-decoration: none; display: inline-block; margin-top: 20px; font-size: 12px; font-weight: 600; }
-                .attribution { margin-top: 24px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px; font-size: 11px; color: #6b7280; }
-            </style>
-        </head>
-        <body>
-            <div class="card">
-                <h2>🔒 Genuine Production Vault</h2>
-                <p class="info">Authenticated Employee Session (Port 8000)</p>
-                <div class="status-box">
-                    ✔ AUTHORIZED ACCESS GRANTED<br>
-                    <span style="font-size: 11px; font-weight: normal; color: #9ca3af;">User: admin@aegis-corp.com | Encrypted TLS 1.3</span>
-                </div>
-                <p class="info">Welcome, Authorized Administrator. All core production modules online.</p>
-                <a href="/real-admin">← Log Out</a>
+async def real_admin_authenticate(request: Request, username: str = Form(...), password: str = Form(...)):
+    client_ip = request.client.host if request.client else "127.0.0.1"
 
-                <div class="attribution">
-                    <strong>The Oxford Evening Polytechnic</strong> (Sem VI)<br>
-                    Project Guide: <strong>Mr. Subhash J R</strong><br>
-                    Team: Abhijeet Kumar, Kanaka C, Raghunandan T V
-                </div>
-            </div>
-        </body>
-        </html>
-        """)
-    else:
-        return HTMLResponse("""
-        <script>
-            alert('Invalid Credentials! Access Denied.');
-            window.location.href = '/real-admin';
-        </script>
-        """, status_code=401)
+    # Honeytoken Decoy Trap Trigger
+    event_data = {
+        "attacker_ip": client_ip,
+        "port": 8000,
+        "decoy_service": "DECOY_API_KEYS",
+        "attack_type": "Honeytoken Credential Compromise",
+        "payload": f"Attempted Production Vault Login: username='{username}' pass='{password}'",
+        "mitre_id": "T1078",
+        "mitre_name": "Valid Accounts / Honeytoken Compromise",
+        "mitre_tactic": "Credential Access",
+        "risk_score": 95,
+        "severity": "CRITICAL"
+    }
+
+    log_attack_event(**event_data)
+    active_defense_engine.enforce_ip_quarantine(client_ip, "Honeytoken Vault Login Trap Hit")
+    event_data["quarantined"] = True
+    manager.sync_broadcast(event_data)
+
+    return JSONResponse({
+        "status": "QUARANTINED",
+        "error": "Honeytoken Trap Triggered",
+        "message": f"Attempted Production Vault Login: username='{username}'. IP {client_ip} has been quarantined."
+    }, status_code=403)
+
+# Dedicated Honeytoken Decoy Endpoints on Port 8000
+@app.get("/api/v1/auth/keys")
+@app.get("/api/v1/admin/db_export")
+@app.get("/secret-vault-admin-login-php")
+@app.get("/admin/login")
+async def honeytoken_path_trap(request: Request):
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    path = request.url.path
+
+    event_data = {
+        "attacker_ip": client_ip,
+        "port": 8000,
+        "decoy_service": "DECOY_API_KEYS",
+        "attack_type": "Honeytoken Exfiltration Trap",
+        "payload": f"Unauthenticated Scanner Accessed Honeytoken Endpoint: '{path}'",
+        "mitre_id": "T1078",
+        "mitre_name": "Valid Accounts / Honeytoken Access",
+        "mitre_tactic": "Credential Access",
+        "risk_score": 95,
+        "severity": "CRITICAL"
+    }
+
+    log_attack_event(**event_data)
+    active_defense_engine.enforce_ip_quarantine(client_ip, f"Honeytoken Path Trap Triggered: {path}")
+    event_data["quarantined"] = True
+    manager.sync_broadcast(event_data)
+
+    return JSONResponse({
+        "status": "QUARANTINED",
+        "error": "Access Denied",
+        "message": f"Honeytoken Decoy Trap Triggered on '{path}'. Incident logged & IP {client_ip} quarantined by K.A.R.M.A Active Defense Engine."
+    }, status_code=403)
 
 @app.get("/api/status")
 async def get_system_status():
-    logs = get_recent_logs(100)
+    total_count = get_total_attack_count()
     attackers = get_attackers_list()
     quarantined = get_quarantine_list()
     tokens = get_honeytokens()
@@ -224,7 +306,7 @@ async def get_system_status():
             for d in all_decoys
         ],
         "metrics": {
-            "total_attacks_logged": len(logs),
+            "total_attacks_logged": total_count,
             "unique_attackers": len(attackers),
             "quarantined_ips": len(quarantined),
             "active_honeytokens": len(tokens),
@@ -279,6 +361,21 @@ async def get_ai_report(ip: str):
     conn.close()
 
     report = generate_ai_threat_summary(ip, logs, attacker_profile)
+    return report
+
+@app.get("/api/ai-report/event/{log_id}")
+async def get_single_event_ai_report_api(log_id: int):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM attack_logs WHERE id = ?', (log_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Attack log event not found")
+
+    event = dict(row)
+    report = generate_single_event_ai_report(event)
     return report
 
 @app.post("/api/simulator/launch")
@@ -443,8 +540,84 @@ async def launch_tester():
     except Exception as e:
         return JSONResponse({"status": "ERROR", "message": str(e)}, status_code=500)
 
+@app.get("/api/logs/csv/list")
+async def list_csv_logs():
+    log_dir = "logs"
+    if not os.path.exists(log_dir):
+        return []
+    
+    files = []
+    for f in sorted(os.listdir(log_dir), reverse=True):
+        if f.endswith(".csv"):
+            fpath = os.path.join(log_dir, f)
+            size = os.path.getsize(fpath)
+            ctime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(os.path.getctime(fpath)))
+            
+            line_count = 0
+            try:
+                with open(fpath, 'r', encoding='utf-8') as cf:
+                    line_count = max(0, sum(1 for _ in cf) - 1)
+            except Exception:
+                pass
+            
+            files.append({
+                "filename": f,
+                "size_bytes": size,
+                "created_time": ctime,
+                "row_count": line_count
+            })
+    return files
+
+@app.get("/api/logs/csv/view/{filename}")
+async def view_csv_log(filename: str):
+    log_dir = "logs"
+    fpath = os.path.join(log_dir, os.path.basename(filename))
+    if not os.path.exists(fpath):
+        raise HTTPException(status_code=404, detail="CSV Log File not found")
+
+    rows = []
+    with open(fpath, 'r', encoding='utf-8') as cf:
+        reader = csv.DictReader(cf)
+        for r in reader:
+            rows.append(r)
+    return {"filename": filename, "total_rows": len(rows), "rows": rows}
+
+@app.get("/api/logs/csv/download/{filename}")
+async def download_csv_log(filename: str):
+    log_dir = "logs"
+    fpath = os.path.join(log_dir, os.path.basename(filename))
+    if not os.path.exists(fpath):
+        raise HTTPException(status_code=404, detail="CSV Log File not found")
+    return FileResponse(fpath, media_type="text/csv", filename=filename)
+
+@app.api_route("/api/logs/csv/delete/{filename}", methods=["GET", "DELETE"])
+async def delete_csv_log(filename: str):
+    log_dir = "logs"
+    fpath = os.path.join(log_dir, os.path.basename(filename))
+    if os.path.exists(fpath):
+        try:
+            os.remove(fpath)
+            return {"status": "SUCCESS", "message": f"Deleted CSV log file '{filename}'"}
+        except Exception as e:
+            return JSONResponse({"status": "ERROR", "message": str(e)}, status_code=500)
+    raise HTTPException(status_code=404, detail="CSV Log File not found")
+
+@app.post("/api/tools/phishing-eml")
+async def analyze_phishing_eml_api(file: UploadFile = File(...)):
+    if not file.filename.endswith(".eml") and not file.filename.endswith(".msg"):
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload a valid .eml file.")
+
+    content = await file.read()
+    from backend.engine.phishing_analyzer import parse_and_analyze_eml
+    return parse_and_analyze_eml(content, filename=file.filename)
+
 @app.on_event("startup")
 async def startup_event():
     loop = asyncio.get_running_loop()
     manager.set_loop(loop)
+    audit_csv_logger.start()
     start_sensors(manager.sync_broadcast)
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    audit_csv_logger.stop()

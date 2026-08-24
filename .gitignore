@@ -17,6 +17,12 @@ env/
 .vscode/
 .idea/
 
+# PyInstaller Build Caches & Distributable Binaries
+build/
+dist/
+*.spec
+logs/*.csv
+
 # OS generated files
 .DS_Store
 Thumbs.db

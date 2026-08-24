@@ -285,7 +285,7 @@ function createTelemetryRowHTML(l, innerOnly = false) {
         <td><span class="font-mono" style="color: var(--accent-amber); font-weight: bold;">${l.mitre_id || 'T1046'}</span> ${l.mitre_name || ''}</td>
         <td><span class="sev-badge sev-${l.severity}">${l.severity}</span></td>
         <td>
-            <button class="btn btn-sm btn-secondary" onclick="inspectAIReport('${l.attacker_ip}')">AI Report</button>
+            <button class="btn btn-sm btn-primary" style="font-size: 11px; font-weight: 600; padding: 2px 8px;" onclick="inspectEventAIReport(${l.id})">⚡ AI Report</button>
         </td>
     `;
     return innerOnly ? content : `<tr>${content}</tr>`;
@@ -356,6 +356,92 @@ function renderHoneytokenList(tokens) {
             </div>
         `;
     }).join('');
+}
+
+async function inspectEventAIReport(logId) {
+    const modal = document.getElementById("aiReportModal");
+    const content = document.getElementById("modalReportContent");
+
+    content.innerHTML = `<p style="text-align:center; color: var(--text-secondary); padding: 20px;">Synthesizing AI Forensic Intelligence Report for Event <b>#${logId}</b>...</p>`;
+    modal.classList.add("open");
+
+    try {
+        const res = await fetch(`/api/ai-report/event/${logId}`);
+        if (!res.ok) throw new Error("Failed to load event forensic report");
+        const data = await res.json();
+
+        content.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,112,243,0.08); padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid rgba(0,112,243,0.2);">
+                <div>
+                    <span style="font-size: 11px; color: var(--accent-blue); font-weight: bold; text-transform: uppercase;">INCIDENT EVENT #${data.event_id || logId}</span>
+                    <div style="font-size: 15px; font-weight: 800; color: var(--text-primary); margin-top: 2px;">
+                        ${escapeHTML(data.intent_classification)}
+                    </div>
+                </div>
+                <span class="sev-badge sev-${data.severity}" style="font-size: 12px; padding: 4px 10px;">${data.severity} (${data.risk_score}/100)</span>
+            </div>
+
+            <!-- INCIDENT METADATA GRID -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 16px; font-size: 12px;">
+                <div style="background: var(--bg-subtle); padding: 10px; border-radius: 6px;">
+                    <div style="color: var(--text-muted); font-size: 11px;">ATTACKER IP / ORIGIN</div>
+                    <div style="font-weight: 700; color: var(--accent-blue); margin-top: 2px;">
+                        <span style="margin-right: 4px;">${data.flag || '🌐'}</span> ${escapeHTML(data.attacker_ip)}
+                    </div>
+                    <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">${escapeHTML(data.city || '')}, ${escapeHTML(data.country || 'Local Network')}</div>
+                </div>
+
+                <div style="background: var(--bg-subtle); padding: 10px; border-radius: 6px;">
+                    <div style="color: var(--text-muted); font-size: 11px;">TARGET DECOY SERVICE</div>
+                    <div style="font-weight: 700; color: var(--text-primary); margin-top: 2px;">
+                        <span class="widget-tag">${escapeHTML(data.decoy_service)}</span>
+                    </div>
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Port ${data.port}</div>
+                </div>
+
+                <div style="background: var(--bg-subtle); padding: 10px; border-radius: 6px;">
+                    <div style="color: var(--text-muted); font-size: 11px;">MITRE ATT&CK TTP</div>
+                    <div style="font-weight: 700; color: var(--accent-amber); margin-top: 2px;">
+                        ${data.mitre_id}
+                    </div>
+                    <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">${escapeHTML(data.mitre_name || '')}</div>
+                </div>
+
+                <div style="background: var(--bg-subtle); padding: 10px; border-radius: 6px;">
+                    <div style="color: var(--text-muted); font-size: 11px;">TIMESTAMP</div>
+                    <div style="font-weight: 600; color: var(--text-primary); margin-top: 2px; font-family: monospace;">
+                        ${(data.timestamp || '').replace('T', ' ').substring(0, 19)}
+                    </div>
+                </div>
+            </div>
+
+            <!-- EXECUTED PAYLOAD / HACKER COMMAND -->
+            <div style="margin-bottom: 16px;">
+                <p style="font-weight: 700; font-size: 12px; color: var(--text-primary); margin-bottom: 6px;">💻 Captured Executed Hacker Command / Payload:</p>
+                <div style="background: #020617; border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8; padding: 12px 14px; border-radius: 6px; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; max-height: 140px; overflow-y: auto;">${escapeHTML(data.executed_payload)}</div>
+            </div>
+
+            <!-- FORENSIC SUMMARY ANALYSIS -->
+            <div style="background: var(--bg-subtle); padding: 14px; border-left: 4px solid var(--accent-blue); border-radius: 6px; margin-bottom: 16px;">
+                <p style="font-weight: 700; font-size: 12px; color: var(--text-primary); margin-bottom: 4px;">🔍 AI Executive Forensic Analysis:</p>
+                <p style="color: var(--text-secondary); font-size: 12px; line-height: 1.5; margin: 0;">${escapeHTML(data.forensic_summary)}</p>
+            </div>
+
+            <!-- RECOMMENDED SOC ACTION PLAN -->
+            <div style="margin-bottom: 12px;">
+                <p style="font-weight: 700; font-size: 12px; color: var(--text-primary); margin-bottom: 6px;">🛡️ Recommended SOC Remediation Action Plan:</p>
+                <ul style="padding-left: 20px; color: var(--text-secondary); font-size: 12px; margin: 0; line-height: 1.6;">
+                    ${(data.recommendations || []).map(r => `<li>${escapeHTML(r)}</li>`).join('')}
+                </ul>
+            </div>
+
+            <div style="font-size: 11px; color: var(--accent-green); border-top: 1px solid var(--border-subtle); padding-top: 10px; margin-top: 14px; text-align: right; font-weight: 600;">
+                ⚡ ${escapeHTML(data.action_taken || 'Event recorded & isolated by K.A.R.M.A Active Defense Engine')}
+            </div>
+        `;
+    } catch (err) {
+        content.innerHTML = `<p style="color: var(--accent-red); padding: 20px; text-align: center;">Error generating forensic report: ${err.message}</p>`;
+    }
 }
 
 async function inspectAIReport(ip) {
@@ -473,7 +559,11 @@ function setupEventListeners() {
             const tabContents = document.querySelectorAll(".tab-content");
             tabContents.forEach(tc => tc.classList.remove("active"));
 
-            const targetTab = document.getElementById("tab" + tabName.charAt(0).toUpperCase() + tabName.slice(1));
+            // Convert e.g. "tool-password" -> "tabToolPassword" or "summary" -> "tabSummary"
+            const camelTab = tabName.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
+            const targetId = "tab" + camelTab;
+            const targetTab = document.getElementById(targetId);
+
             if (targetTab) {
                 targetTab.classList.add("active");
             } else {
@@ -531,12 +621,13 @@ function setupEventListeners() {
         });
     }
 
-    // Reset Button
+    // Reset System Data Button
     const btnReset = document.getElementById("btnResetData");
     if (btnReset) {
         btnReset.addEventListener("click", async () => {
-            if (confirm("Reset SIEM telemetry data?")) {
+            if (confirm("Reset all SIEM telemetry data and clear live charts?")) {
                 await fetch("/api/reset", { method: "POST" });
+                if (typeof resetCharts === "function") resetCharts();
                 fetchDashboardData();
             }
         });
@@ -592,13 +683,118 @@ function setupEventListeners() {
         });
     }
 
-    // Modal Close Buttons
+    // Modal Close Buttons (AI Report Modal)
     const btnCloseModal = document.getElementById("btnCloseModal");
     const btnModalClose2 = document.getElementById("btnModalClose2");
     const modal = document.getElementById("aiReportModal");
 
     if (btnCloseModal) btnCloseModal.addEventListener("click", () => modal.classList.remove("open"));
     if (btnModalClose2) btnModalClose2.addEventListener("click", () => modal.classList.remove("open"));
+
+    // Modal Close Buttons (CSV View Modal)
+    const btnCsvClose = document.getElementById("btnCsvModalClose");
+    const btnCsvClose2 = document.getElementById("btnCsvModalClose2");
+    const csvModal = document.getElementById("csvViewModal");
+
+    if (btnCsvClose) btnCsvClose.addEventListener("click", () => csvModal.classList.remove("open"));
+    if (btnCsvClose2) btnCsvClose2.addEventListener("click", () => csvModal.classList.remove("open"));
+
+    // Initial CSV logs fetch
+    fetchCsvLogsList();
+}
+
+async function fetchCsvLogsList() {
+    const tbody = document.getElementById("csvLogsTableBody");
+    if (!tbody) return;
+
+    try {
+        const res = await fetch("/api/logs/csv/list");
+        const files = await res.json();
+
+        if (!Array.isArray(files) || files.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="empty-cell">No CSV audit log files generated yet.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = files.map(f => {
+            const sizeKb = (f.size_bytes / 1024).toFixed(1) + " KB";
+            return `
+                <tr>
+                    <td class="font-mono" style="color: var(--accent-blue); font-weight: 600;">${escapeHTML(f.filename)}</td>
+                    <td class="font-mono" style="font-size: 11px; color: var(--text-muted);">${f.created_time}</td>
+                    <td class="font-mono" style="font-size: 11px;">${sizeKb}</td>
+                    <td class="font-mono" style="text-align: center; font-weight: bold; color: var(--accent-green);">${f.row_count} events</td>
+                    <td>
+                        <div style="display: flex; gap: 4px;">
+                            <button class="btn btn-sm btn-primary" onclick="viewCsvLog('${f.filename}')">👁️ View</button>
+                            <button class="btn btn-sm btn-secondary" onclick="downloadCsvLog('${f.filename}')">⬇️ Download</button>
+                            <button class="btn btn-sm btn-secondary" style="color: var(--accent-red); border-color: rgba(239,68,68,0.3);" onclick="deleteCsvLog('${f.filename}')">🗑️ Delete</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-cell" style="color: var(--accent-red);">Error loading CSV log files: ${err.message}</td></tr>`;
+    }
+}
+
+async function viewCsvLog(filename) {
+    const modal = document.getElementById("csvViewModal");
+    const title = document.getElementById("csvModalTitle");
+    const content = document.getElementById("modalCsvContent");
+
+    if (!modal || !content) return;
+
+    title.innerText = `📄 Preview Audit Log: ${filename}`;
+    content.innerHTML = `<p style="text-align:center; padding: 20px; color: var(--text-secondary);">Loading CSV log contents...</p>`;
+    modal.classList.add("open");
+
+    try {
+        const res = await fetch(`/api/logs/csv/view/${filename}`);
+        if (!res.ok) throw new Error("Failed to load CSV file");
+        const data = await res.json();
+
+        if (!data.rows || data.rows.length === 0) {
+            content.innerHTML = `<p style="text-align:center; padding: 20px; color: var(--text-muted);">This CSV file is currently empty (0 event rows).</p>`;
+            return;
+        }
+
+        const headers = Object.keys(data.rows[0]);
+        const headerHTML = headers.map(h => `<th style="font-size: 11px;">${escapeHTML(h)}</th>`).join('');
+        const rowsHTML = data.rows.map(r => {
+            return `<tr>${headers.map(h => `<td class="font-mono" style="font-size: 11px;">${escapeHTML(r[h] || '')}</td>`).join('')}</tr>`;
+        }).join('');
+
+        content.innerHTML = `
+            <div style="margin-bottom: 10px; font-size: 12px; color: var(--text-secondary);">
+                Total Recorded Session Events: <strong style="color: var(--accent-blue);">${data.total_rows}</strong>
+            </div>
+            <div class="table-container" style="max-height: 55vh; overflow-y: auto;">
+                <table class="siem-table">
+                    <thead><tr>${headerHTML}</tr></thead>
+                    <tbody>${rowsHTML}</tbody>
+                </table>
+            </div>
+        `;
+    } catch (err) {
+        content.innerHTML = `<p style="color: var(--accent-red); padding: 20px; text-align: center;">Error viewing CSV file: ${err.message}</p>`;
+    }
+}
+
+function downloadCsvLog(filename) {
+    window.open(`/api/logs/csv/download/${filename}`, '_blank');
+}
+
+async function deleteCsvLog(filename) {
+    if (confirm(`Are you sure you want to delete '${filename}'?`)) {
+        try {
+            await fetch(`/api/logs/csv/delete/${filename}`, { method: "DELETE" });
+            fetchCsvLogsList();
+        } catch (err) {
+            alert("Error deleting CSV file: " + err.message);
+        }
+    }
 }
 
 function escapeHTML(str) {

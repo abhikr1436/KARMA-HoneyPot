@@ -25,6 +25,10 @@ class ActiveDefenseManager:
         add_to_quarantine(ip, reason, 100)
         return True, f"IP {ip} manually quarantined."
 
+    def enforce_ip_quarantine(self, ip, reason="Honeytoken Trap Containment"):
+        add_to_quarantine(ip, reason, 95)
+        return True, f"IP {ip} quarantined."
+
     def manual_unblock(self, ip):
         remove_from_quarantine(ip)
         return True, f"IP {ip} removed from quarantine."

@@ -61,7 +61,7 @@
 
             <button class="btn btn-secondary" id="btnLaunchTester" style="background: var(--bg-hover); color: var(--accent-purple); border-color: var(--accent-purple);" title="Launch Honeypot Tester & Attacker Verification Suite">🧪 Tester / Attacker</button>
             <button class="btn btn-primary" id="btnLaunchSim">⚡ Run Attack Simulator</button>
-            <button class="btn btn-secondary" id="btnResetData">Refresh</button>
+            <button class="btn btn-secondary" id="btnResetData" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border-color: rgba(239, 68, 68, 0.3);" title="Reset system telemetry and clear all charts">🗑️ Reset System</button>
         </div>
     </header>
 
@@ -95,6 +95,16 @@
                 <a href="/real-admin" target="_blank" class="nav-item">
                     <span class="nav-icon">🔒</span>
                     <span class="nav-text">Real Production Admin</span>
+                </a>
+
+                <div class="nav-section-title">CYBER TOOLKIT</div>
+                <a href="#tool-password" class="nav-item" data-tab="tool-password">
+                    <span class="nav-icon">🔑</span>
+                    <span class="nav-text">Password Strength & Hasher</span>
+                </a>
+                <a href="#tool-phishing" class="nav-item" data-tab="tool-phishing">
+                    <span class="nav-icon">🎣</span>
+                    <span class="nav-text">AI Phishing .EML Analyzer</span>
                 </a>
 
                 <div class="nav-section-title">PROJECT INFORMATION</div>
@@ -154,9 +164,13 @@
                 <!-- ROW 1: TIME SERIES TREND LINE PLOT & WORLD MAP (Logz.io Image 1 Style) -->
                 <section class="dashboard-row row-50-50">
                     <div class="widget-box">
-                        <div class="widget-header">
-                            <h3>Event Volume Trend Line (@timestamp per 30 minutes)</h3>
-                            <span class="widget-tag">Line Plot</span>
+                        <div class="widget-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3>Event Volume Real-Time Trend Line (Per Second)</h3>
+                            <div style="display: flex; gap: 4px; align-items: center;">
+                                <button class="btn btn-sm btn-secondary" onclick="zoomTimeSeriesChart('in')" style="padding: 2px 6px; font-size: 11px; cursor: pointer;" title="Zoom In">➕</button>
+                                <button class="btn btn-sm btn-secondary" onclick="zoomTimeSeriesChart('out')" style="padding: 2px 6px; font-size: 11px; cursor: pointer;" title="Zoom Out">➖</button>
+                                <button class="btn btn-sm btn-secondary" onclick="zoomTimeSeriesChart('reset')" style="padding: 2px 6px; font-size: 11px; cursor: pointer;" title="Fit All Ticks">🔄 Fit</button>
+                            </div>
                         </div>
                         <div class="widget-body">
                             <canvas id="timeSeriesChart"></canvas>
@@ -240,9 +254,10 @@
                 </section>
             </div>
 
-            <!-- TAB 2: MITRE ATT&CK HEATMAP -->
+            <!-- TAB 2: MITRE ATT&CK HEATMAP & KNOWLEDGE BASE -->
             <div class="tab-content" id="tabMitre">
-                <div class="widget-box width-100">
+                <!-- TOP SECTION: LIVE SIEM TTP HEATMAP GRID -->
+                <div class="widget-box width-100" style="margin-bottom: 20px;">
                     <div class="widget-header">
                         <h3>MITRE ATT&CK Framework Heatmap Grid</h3>
                         <span class="widget-tag">TTP Pattern Recognition</span>
@@ -251,6 +266,131 @@
                         <div class="mitre-grid-catalog" id="mitreGrid"></div>
                     </div>
                 </div>
+
+                <!-- SECTION 1: MITRE ATT&CK ARCHITECTURE & FULL FORM EXPLANATION -->
+                <div class="widget-box width-100" style="margin-bottom: 20px;">
+                    <div class="widget-header">
+                        <h3>🛡️ Understanding MITRE ATT&CK® Framework</h3>
+                        <span class="widget-tag">Global Cyber Intelligence Standard</span>
+                    </div>
+                    <div class="widget-body" style="padding: 20px; line-height: 1.6; color: var(--text-secondary); font-size: 13px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 10px;">
+                            <div style="background: var(--bg-subtle); padding: 18px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <h4 style="color: var(--accent-blue); margin-bottom: 8px; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+                                    <span>📖 What is MITRE ATT&CK?</span>
+                                </h4>
+                                <p style="margin-bottom: 10px;">
+                                    <strong>Full Form:</strong> <span style="color: var(--text-primary); font-weight: 700;">MITRE Adversary Tactics, Techniques, and Common Knowledge</span>.
+                                </p>
+                                <p style="margin-bottom: 10px;">
+                                    MITRE ATT&CK® is a globally accessible, industry-standard knowledge base of real-world adversary tactics and techniques based on actual cyber threat intelligence observations.
+                                </p>
+                                <p>
+                                    In <strong>K.A.R.M.A Cloud SIEM</strong>, every incoming honeypot attack (SSH brute force, SQL injection, port scans, or honeytoken traps) is automatically classified against official MITRE ATT&CK TTP identifiers in real-time.
+                                </p>
+                            </div>
+
+                            <div style="background: var(--bg-subtle); padding: 18px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <h4 style="color: var(--accent-purple, #a855f7); margin-bottom: 8px; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+                                    <span>🧩 Core Taxonomy & Building Blocks</span>
+                                </h4>
+                                <ul style="list-style: none; padding: 0; margin: 0;">
+                                    <li style="margin-bottom: 8px;">
+                                        <strong style="color: #3b82f6;">🎯 Tactics (The "Why"):</strong> The adversary's tactical goal (e.g. <em>Reconnaissance</em>, <em>Credential Access</em>, <em>Initial Access</em>).
+                                    </li>
+                                    <li style="margin-bottom: 8px;">
+                                        <strong style="color: #10b981;">⚡ Techniques (The "How"):</strong> The specific means by which an adversary achieves a goal (e.g. <em>T1046 Network Service Discovery</em>).
+                                    </li>
+                                    <li style="margin-bottom: 8px;">
+                                        <strong style="color: #f59e0b;">🔬 Sub-Techniques:</strong> Granular sub-methods under a technique (e.g. <em>T1059.004 Unix Shell Command Execution</em>).
+                                    </li>
+                                    <li style="margin-bottom: 0;">
+                                        <strong style="color: #ef4444;">📜 Procedures (TTPs):</strong> The exact malware, exploit payload, or command executed by the hacker.
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 2: K.A.R.M.A ACTIVE TTP DECEPTION MATRIX CATALOG -->
+                <div class="widget-box width-100">
+                    <div class="widget-header">
+                        <h3>⚡ K.A.R.M.A Active Honeypot MITRE ATT&CK® Mapping Catalog</h3>
+                        <span class="widget-tag">Autonomous Threat Classification</span>
+                    </div>
+                    <div class="widget-body" style="padding: 20px;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                            
+                            <!-- Card 1: T1046 -->
+                            <div style="background: var(--bg-subtle); padding: 16px; border-radius: 8px; border-left: 4px solid #10b981; border-top: 1px solid var(--border-color); border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-family: monospace; font-weight: 700; background: rgba(16, 185, 129, 0.15); color: #10b981; padding: 2px 8px; border-radius: 4px; font-size: 12px;">T1046</span>
+                                    <span style="font-size: 11px; color: var(--text-muted);">Reconnaissance</span>
+                                </div>
+                                <h4 style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">Network Service Discovery</h4>
+                                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">Nmap port scans, TCP banner grabs, and automated service enumeration probes across open ports (21, 23, 8000, 8080, 2222, 3389).</p>
+                                <div style="font-size: 11px; color: var(--text-muted); font-family: monospace; border-top: 1px dashed var(--border-color); padding-top: 6px;">
+                                    Sensors: <code>FTP, Telnet, SSH, RDP, Web Decoy</code>
+                                </div>
+                            </div>
+
+                            <!-- Card 2: T1110 -->
+                            <div style="background: var(--bg-subtle); padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6; border-top: 1px solid var(--border-color); border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-family: monospace; font-weight: 700; background: rgba(59, 130, 246, 0.15); color: #3b82f6; padding: 2px 8px; border-radius: 4px; font-size: 12px;">T1110</span>
+                                    <span style="font-size: 11px; color: var(--text-muted);">Credential Access</span>
+                                </div>
+                                <h4 style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">Brute Force Authentication</h4>
+                                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">Automated credential stuffing & password guessing attacks on SSH OpenSSH decoy (2222), FTP service (21), and Telnet portal (23).</p>
+                                <div style="font-size: 11px; color: var(--text-muted); font-family: monospace; border-top: 1px dashed var(--border-color); padding-top: 6px;">
+                                    Sensors: <code>SSH (2222), FTP (21), Telnet (23)</code>
+                                </div>
+                            </div>
+
+                            <!-- Card 3: T1059 -->
+                            <div style="background: var(--bg-subtle); padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; border-top: 1px solid var(--border-color); border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-family: monospace; font-weight: 700; background: rgba(245, 158, 11, 0.15); color: #f59e0b; padding: 2px 8px; border-radius: 4px; font-size: 12px;">T1059</span>
+                                    <span style="font-size: 11px; color: var(--text-muted);">Execution</span>
+                                </div>
+                                <h4 style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">Command & Scripting Interpreter</h4>
+                                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">Execution of post-exploitation Linux shell commands (e.g. <code>whoami</code>, <code>cat /etc/passwd</code>, <code>id</code>, <code>uname -a</code>) in fake OpenSSH interactive shell.</p>
+                                <div style="font-size: 11px; color: var(--text-muted); font-family: monospace; border-top: 1px dashed var(--border-color); padding-top: 6px;">
+                                    Sensors: <code>OpenSSH Decoy Shell (2222)</code>
+                                </div>
+                            </div>
+
+                            <!-- Card 4: T1190 -->
+                            <div style="background: var(--bg-subtle); padding: 16px; border-radius: 8px; border-left: 4px solid #a855f7; border-top: 1px solid var(--border-color); border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-family: monospace; font-weight: 700; background: rgba(168, 85, 247, 0.15); color: #a855f7; padding: 2px 8px; border-radius: 4px; font-size: 12px;">T1190</span>
+                                    <span style="font-size: 11px; color: var(--text-muted);">Initial Access</span>
+                                </div>
+                                <h4 style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">Exploit Public-Facing Application</h4>
+                                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">Web application attacks including SQL Injection (<code>' OR '1'='1</code>), Cross-Site Scripting (XSS), and Path Traversal on Web Decoy portal (Port 8080).</p>
+                                <div style="font-size: 11px; color: var(--text-muted); font-family: monospace; border-top: 1px dashed var(--border-color); padding-top: 6px;">
+                                    Sensors: <code>Web Decoy Portal (8080)</code>
+                                </div>
+                            </div>
+
+                            <!-- Card 5: T1078 -->
+                            <div style="background: var(--bg-subtle); padding: 16px; border-radius: 8px; border-left: 4px solid #ef4444; border-top: 1px solid var(--border-color); border-right: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-family: monospace; font-weight: 700; background: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 2px 8px; border-radius: 4px; font-size: 12px;">T1078</span>
+                                    <span style="font-size: 11px; color: var(--text-muted);">Credential Access</span>
+                                </div>
+                                <h4 style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">Valid Accounts / Honeytoken Trap</h4>
+                                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">Unauthenticated access attempts or credential testing on decoy honeytoken endpoints (e.g. <code>/real-admin</code>, <code>/api/v1/auth/keys</code>). Triggers <strong>Instant IP Quarantine</strong>.</p>
+                                <div style="font-size: 11px; color: var(--text-muted); font-family: monospace; border-top: 1px dashed var(--border-color); padding-top: 6px;">
+                                    Sensors: <code>Honeytoken Trap Engine (8000)</code>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- TAB 3: HONEYTOKEN VAULT -->
@@ -327,7 +467,180 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- CSV SIEM AUDIT LOG MANAGER WIDGET -->
+                <div class="widget-box width-100" style="margin-top: 20px; margin-bottom: 20px;">
+                    <div class="widget-header">
+                        <h3>📁 CSV SIEM Audit Log Manager</h3>
+                        <button class="btn btn-sm btn-secondary" onclick="fetchCsvLogsList()">🔄 Refresh CSV Logs</button>
+                    </div>
+                    <div class="widget-body">
+                        <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 14px; line-height: 1.5;">
+                            Session CSV audit logs are automatically created on server startup named with date and time (<code>karma_audit_YYYY-MM-DD_HH-MM-SS.csv</code>).
+                            All attack events are saved with instant buffer flushing to guarantee complete data retention.
+                        </p>
+                        <div class="table-container" style="max-height: 240px; overflow-y: auto;">
+                            <table class="siem-table">
+                                <thead>
+                                    <tr>
+                                        <th>CSV Filename</th>
+                                        <th>Created Date / Time</th>
+                                        <th>File Size</th>
+                                        <th>Recorded Events</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="csvLogsTableBody">
+                                    <tr><td colspan="5" class="empty-cell">Loading CSV audit logs...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
+
+            <!-- TOOL 1: PASSWORD STRENGTH & MARKET HASHER -->
+            <div class="tab-content" id="tabToolPassword">
+                <div class="widget-box width-100" style="margin-bottom: 20px;">
+                    <div class="widget-header">
+                        <h3>🔑 Password Security & Market Cryptographic Hasher</h3>
+                        <span class="widget-tag">Client-Side Zero-Storage Analysis</span>
+                    </div>
+                    <div class="widget-body" style="padding: 20px;">
+                        
+                        <!-- MANDATORY PRIVACY NOTICE BANNER -->
+                        <div style="background: rgba(239, 68, 68, 0.08); border: 2px solid #ef4444; padding: 14px 18px; border-radius: 8px; margin-bottom: 24px;">
+                            <h4 style="color: #ef4444; font-size: 14px; font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                                <span>⚠️ MANDATORY PRIVACY & ZERO-LOGGING NOTICE</span>
+                            </h4>
+                            <p style="color: var(--text-primary); font-size: 13px; margin: 0; font-weight: 600; line-height: 1.5;">
+                                <strong>WE DO NOT STORE OR LOG PASSWORDS AT ALL!</strong> All password strength evaluations, entropy calculations, time-to-crack estimations, and market cryptographic hashes (MD5, SHA-256, SHA-512) are calculated <strong>STRICTLY IN-MEMORY ON YOUR CLIENT DEVICE</strong>. Passwords are never sent across the network or saved anywhere!
+                            </p>
+                        </div>
+
+                        <!-- PASSWORD INPUT BOX -->
+                        <div style="background: var(--bg-subtle); padding: 20px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+                            <label style="font-size: 13px; font-weight: 700; color: var(--text-primary); display: block; margin-bottom: 8px;">Enter Test Password:</label>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="password" id="toolPasswordInput" placeholder="Type or paste any password to analyze strength & hashes..." style="flex: 1; padding: 10px 14px; font-size: 14px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px;" />
+                                <button class="btn btn-secondary" id="btnTogglePassVis" onclick="togglePasswordVisibility()">👁️ Show Password</button>
+                            </div>
+
+                            <!-- STRENGTH METER & METRICS -->
+                            <div style="margin-top: 16px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                    <span style="font-size: 12px; color: var(--text-muted);">Strength Assessment:</span>
+                                    <span id="passStrengthLabel" style="font-weight: 800; font-size: 13px; color: var(--text-muted);">Awaiting Input</span>
+                                </div>
+                                <div style="width: 100%; height: 8px; background: var(--bg-card); border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color);">
+                                    <div id="passStrengthBar" style="width: 0%; height: 100%; background: #ef4444; transition: width 0.3s, background-color 0.3s;"></div>
+                                </div>
+                            </div>
+
+                            <!-- METRICS GRID -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 16px;">
+                                <div style="background: var(--bg-card); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); text-align: center;">
+                                    <div style="font-size: 11px; color: var(--text-muted);">Estimated GPU Crack Time</div>
+                                    <div id="passCrackTime" style="font-size: 14px; font-weight: 800; color: var(--text-primary); margin-top: 2px;">Instant</div>
+                                </div>
+                                <div style="background: var(--bg-card); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); text-align: center;">
+                                    <div style="font-size: 11px; color: var(--text-muted);">Information Entropy</div>
+                                    <div id="passEntropyScore" style="font-size: 14px; font-weight: 800; color: var(--accent-blue); margin-top: 2px;">0 Bits</div>
+                                </div>
+                                <div style="background: var(--bg-card); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); text-align: center;">
+                                    <div style="font-size: 11px; color: var(--text-muted);">Character Diversity</div>
+                                    <div style="font-size: 11px; font-weight: 700; margin-top: 4px; display: flex; justify-content: center; gap: 6px;">
+                                        <span id="passCheckLen" style="color: var(--text-muted);">LEN</span>
+                                        <span id="passCheckUpper" style="color: var(--text-muted);">AZ</span>
+                                        <span id="passCheckLower" style="color: var(--text-muted);">az</span>
+                                        <span id="passCheckNum" style="color: var(--text-muted);">09</span>
+                                        <span id="passCheckSym" style="color: var(--text-muted);">#$</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- MARKET HASH TABLE -->
+                        <div style="background: var(--bg-subtle); padding: 20px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <h4 style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px;">⚡ Industry Standard Cryptographic Hashes</h4>
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <div>
+                                    <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">SHA-256 (Market Standard Password & Integrity Hash)</label>
+                                    <div style="display: flex; gap: 8px; margin-top: 2px;">
+                                        <input type="text" id="hashSHA256" readonly style="flex: 1; padding: 6px 10px; font-family: monospace; font-size: 12px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--accent-green);" placeholder="SHA-256 Hash" />
+                                        <button class="btn btn-sm btn-secondary" onclick="copyHashValue('hashSHA256')">📋 Copy</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">SHA-512 (High-Security 512-bit Hash)</label>
+                                    <div style="display: flex; gap: 8px; margin-top: 2px;">
+                                        <input type="text" id="hashSHA512" readonly style="flex: 1; padding: 6px 10px; font-family: monospace; font-size: 12px; background: var(--bg-card); border: 1px solid var(--border-color); color: var(--accent-purple);" placeholder="SHA-512 Hash" />
+                                        <button class="btn btn-sm btn-secondary" onclick="copyHashValue('hashSHA512')">📋 Copy</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">MD5 (Legacy / Deprecated Market Hash)</label>
+                                    <div style="display: flex; gap: 8px; margin-top: 2px;">
+                                        <input type="text" id="hashMD5" readonly style="flex: 1; padding: 6px 10px; font-family: monospace; font-size: 12px; background: var(--bg-card); border: 1px solid var(--border-color); color: #ef4444;" placeholder="MD5 Hash" />
+                                        <button class="btn btn-sm btn-secondary" onclick="copyHashValue('hashMD5')">📋 Copy</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- TOOL 2: AI PHISHING .EML FILE ANALYZER -->
+            <div class="tab-content" id="tabToolPhishing">
+                <div class="widget-box width-100" style="margin-bottom: 20px;">
+                    <div class="widget-header">
+                        <h3>🎣 AI Phishing .EML File Analyzer</h3>
+                        <span class="widget-tag">DeepSeek AI Threat Intelligence</span>
+                    </div>
+                    <div class="widget-body" style="padding: 20px;">
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <!-- Upload Box -->
+                            <div style="background: var(--bg-subtle); padding: 20px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <h4 style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">Upload .EML Email File for Inspection:</h4>
+                                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5;">
+                                    Upload raw <code>.eml</code> or <code>.msg</code> email files. DeepSeek AI parses RFC822 MIME headers, evaluates Return-Path domain alignment, checks SPF/DKIM verification, and inspects embedded links.
+                                </p>
+                                
+                                <div id="emlDropZone" style="border: 2px dashed var(--accent-blue); background: var(--bg-card); border-radius: 8px; padding: 30px 20px; text-align: center; cursor: pointer; margin-bottom: 16px; transition: background-color 0.2s;">
+                                    <div style="font-size: 36px; margin-bottom: 8px;">📂</div>
+                                    <div style="font-weight: 700; font-size: 14px; color: var(--text-primary);">Click or Drag & Drop .EML File Here</div>
+                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Supports RFC822 .eml / .msg formats</div>
+                                    <input type="file" id="emlFileInput" accept=".eml,.msg" style="display: none;" />
+                                </div>
+
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="btn btn-primary" id="btnUploadEml" style="flex: 1; padding: 10px; font-weight: 700;">
+                                        🤖 Run DeepSeek AI Forensic Analysis
+                                    </button>
+                                    <button class="btn btn-secondary" onclick="loadSampleEml()" title="Load Sample Phishing Email">
+                                        🧪 Sample .EML
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Analysis Result Container -->
+                            <div id="phishingResultContainer">
+                                <div style="text-align: center; padding: 40px 20px; color: var(--text-muted); border: 2px dashed var(--border-color); border-radius: 8px;">
+                                    <div style="font-size: 32px; margin-bottom: 8px;">📧</div>
+                                    <div style="font-weight: 700; font-size: 14px; color: var(--text-primary);">Awaiting .EML File Inspection</div>
+                                    <div style="font-size: 12px; margin-top: 4px;">Select or drop a <code>.eml</code> email file to run deep neural threat analysis.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+
 
             <!-- TAB 6: ABOUT THE PROJECT -->
             <div class="tab-content" id="tabAbout">
@@ -482,10 +795,27 @@
         </div>
     </div>
 
+    <!-- CSV LOG VIEW MODAL -->
+    <div class="modal-overlay" id="csvViewModal">
+        <div class="modal-card" style="max-width: 960px; width: 94%;">
+            <div class="modal-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 id="csvModalTitle">📄 CSV Audit Log File Preview</h3>
+                <span class="modal-close-btn" id="btnCsvModalClose">&times;</span>
+            </div>
+            <div class="modal-card-body" id="modalCsvContent" style="max-height: 70vh; overflow-y: auto;">
+                <!-- Populated dynamically -->
+            </div>
+            <div class="modal-card-footer">
+                <button class="btn btn-secondary" id="btnCsvModalClose2">Close Preview</button>
+            </div>
+        </div>
+    </div>
+
     <!-- JS Scripts -->
     <script src="/static/js/websocket.js"></script>
     <script src="/static/js/charts.js"></script>
     <script src="/static/js/mitre.js"></script>
+    <script src="/static/js/tools.js"></script>
     <script src="/static/js/app.js"></script>
 </body>
 </html>

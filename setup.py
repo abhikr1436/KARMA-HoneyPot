@@ -1,0 +1,125 @@
+"""
+K.A.R.M.A Cloud SIEM & Threat Deception Platform - Automated Build & Packaging Script
+Usage:
+    python setup.py
+
+This script compiles K.A.R.M.A into a standalone executable package (dist/KARMA_Cloud_SIEM/)
+that can be copied and run on ANY Windows PC without requiring Python, Git, or pip installation!
+"""
+
+import os
+import sys
+import subprocess
+import shutil
+import zipfile
+
+def install_pyinstaller():
+    try:
+        import PyInstaller
+        print("[+] PyInstaller is already installed.")
+    except ImportError:
+        print("[!] PyInstaller not found. Installing PyInstaller via pip...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
+
+def build_standalone_app():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    dist_dir = os.path.join(base_dir, "dist")
+    build_dir = os.path.join(base_dir, "build")
+    output_app_dir = os.path.join(dist_dir, "KARMA_Cloud_SIEM")
+    
+    icon_path = os.path.join(base_dir, "frontend", "Project_Assets", "logo_icon.ico")
+    
+    print("\n==================================================================")
+    print("   K.A.R.M.A: AUTONOMOUS AI THREAT DECEPTION PLATFORM BUILDER    ")
+    print("==================================================================\n")
+
+    # Install PyInstaller if missing
+    install_pyinstaller()
+
+    # PyInstaller arguments
+    # Bundles frontend, backend, config, and assets into standalone package
+    cmd = [
+        sys.executable, "-m", "PyInstaller",
+        "--noconfirm",
+        "--clean",
+        "--name=KARMA_Cloud_SIEM",
+        f"--add-data=frontend{os.pathsep}frontend",
+        f"--add-data=backend{os.pathsep}backend",
+    ]
+
+    if os.path.exists(icon_path):
+        cmd.append(f"--icon={icon_path}")
+
+    cmd.append("run.py")
+
+    print("[+] Executing PyInstaller compilation...")
+    print(f"    Command: {' '.join(cmd)}\n")
+    
+    result = subprocess.run(cmd, cwd=base_dir)
+    
+    if result.returncode != 0:
+        print("\n[❌ ERROR] Build failed! Check PyInstaller output above.")
+        sys.exit(1)
+
+    print("\n[+] PyInstaller compilation finished successfully!")
+
+    # Ensure frontend assets are directly accessible in output folder
+    dist_karma_dir = os.path.join(dist_dir, "KARMA_Cloud_SIEM")
+    dist_frontend = os.path.join(dist_karma_dir, "frontend")
+    
+    if not os.path.exists(dist_frontend):
+        print("[+] Copying frontend asset directory to dist bundle...")
+        shutil.copytree(os.path.join(base_dir, "frontend"), dist_frontend)
+
+    # Ensure logs folder exists in dist bundle
+    dist_logs = os.path.join(dist_karma_dir, "logs")
+    if not os.path.exists(dist_logs):
+        os.makedirs(dist_logs)
+
+    # Create Distribution Info Readme
+    dist_readme = os.path.join(dist_karma_dir, "HOW_TO_RUN.txt")
+    with open(dist_readme, "w", encoding="utf-8") as f:
+        f.write("""==================================================================
+   K.A.R.M.A: AUTONOMOUS AI THREAT DECEPTION PLATFORM (v1.0)
+   Department of Computer Science & Engineering • Major Project
+==================================================================
+
+HOW TO RUN ON ANY WINDOWS PC (NO PYTHON / PIP INSTALLATION REQUIRED):
+
+1. Double-click 'KARMA_Cloud_SIEM.exe' to launch the Control Panel GUI.
+2. Click '🚀 LAUNCH K.A.R.M.A SIEM SERVER' to start all Honeypot sensors.
+3. Click '🌐 Open Web Dashboard' to launch the SIEM Monitoring Console.
+4. Click '🧪 Tester / Attacker' to open the Verification Suite.
+
+DEVELOPER TEAM:
+- Abhijeet Kumar (Team Lead & Core Architect)
+- Kanaka C (Security Analyst & Frontend Engineer)
+- Raghunandan T V (Backend Engineer & Threat Intelligence)
+
+PROJECT GUIDE:
+- Mr. Subhash J R (Lecturer, Dept of CSE)
+==================================================================
+""")
+
+    # Zip the final bundle for easy distribution
+    zip_path = os.path.join(dist_dir, "KARMA_Cloud_SIEM_Standalone_v1.0.zip")
+    print(f"[+] Creating redistributable ZIP archive: {zip_path}...")
+    
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for root, dirs, files in os.walk(dist_karma_dir):
+            for file in files:
+                full_path = os.path.join(root, file)
+                rel_path = os.path.relpath(full_path, dist_dir)
+                zipf.write(full_path, rel_path)
+
+    print("\n==================================================================")
+    print(" [OK] BUILD COMPLETE & REDISTRIBUTABLE PACKAGE CREATED!")
+    print("==================================================================")
+    print(f" Executable Folder : {dist_karma_dir}")
+    print(f" ZIP Package File  : {zip_path}")
+    print("==================================================================")
+    print(" You can copy 'KARMA_Cloud_SIEM_Standalone_v1.0.zip' or the folder")
+    print(" to any Windows PC and double-click 'KARMA_Cloud_SIEM.exe' to run!\n")
+
+if __name__ == "__main__":
+    build_standalone_app()

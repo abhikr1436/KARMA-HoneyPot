@@ -1,3 +1,8 @@
+"""
+K.A.R.M.A SQLite Database Engine & Geolocation Mapping Layer
+Manages threat logs, attacker IP profiles, MITRE ATT&CK statistics, and honeytoken tracking.
+"""
+
 import sqlite3
 import json
 import ipaddress
@@ -189,7 +194,15 @@ def log_attack_event(attacker_ip, port, decoy_service, attack_type, payload, mit
     conn.close()
     return log_id
 
-def get_recent_logs(limit=100):
+def get_total_attack_count():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(*) FROM attack_logs')
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count
+
+def get_recent_logs(limit=1000):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM attack_logs ORDER BY id DESC LIMIT ?', (limit,))

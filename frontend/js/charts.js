@@ -1,12 +1,16 @@
 /*
- * Enterprise SIEM Analytics & Multi-Plot Chart Handler
- * Handles Line, Bar, Doughnut, and Horizontal Bar Charts (Logz.io & Logsign Style)
+ * K.A.R.M.A Cloud SIEM Analytics & Real-Time Multi-Plot Chart Handler
+ * Real-Time Per-Second Line Plot with Auto-Compression & Interactive Zooming
  */
 
 let timeSeriesChartInstance = null;
 let productsBarChartInstance = null;
 let logTypesDoughnutChartInstance = null;
 let eventActionsHorizontalChartInstance = null;
+
+// Zoom state for Time Series Line Plot
+let linePlotZoomLimit = 15; // default visible ticks
+let cachedSecondBuckets = {};
 
 function getChartColors() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -29,62 +33,59 @@ function initSiemCharts() {
     initEventActionsHorizontalChart();
 }
 
-function generateISTTimeBuckets() {
-    const now = new Date();
-    const labels = [];
-    const bucketStartTimes = [];
-    
-    // Generate 8 time slots for the last 24 hours (3-hour steps) ending at current IST time
-    for (let i = 7; i >= 0; i--) {
-        const d = new Date(now.getTime() - i * 3 * 3600 * 1000);
-        const hh = String(d.getHours()).padStart(2, '0');
-        const mm = String(d.getMinutes()).padStart(2, '0');
-        
-        if (i === 0) {
-            labels.push(`${hh}:${mm} IST`);
-        } else {
-            labels.push(`${hh}:00`);
-        }
-        bucketStartTimes.push(d.getTime());
-    }
-    
-    return { labels, bucketStartTimes };
-}
-
-// 1. Time Series Line Chart (Logz.io Image 1)
+// 1. Real-Time Per-Second Event Volume Trend Line Chart (with auto-skip & label clamping)
 function initTimeSeriesChart() {
     const ctx = document.getElementById('timeSeriesChart');
     if (!ctx) return;
     const c = getChartColors();
-    const { labels } = generateISTTimeBuckets();
 
     timeSeriesChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: labels,
+            labels: [],
             datasets: [{
-                label: 'Count',
-                data: [0, 0, 0, 0, 0, 0, 0, 0],
+                label: 'Attack Event Count',
+                data: [],
                 borderColor: c.green,
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                backgroundColor: 'rgba(16, 185, 129, 0.12)',
                 borderWidth: 2,
-                tension: 0.3,
+                tension: 0.25,
                 fill: true,
                 pointRadius: 4,
+                pointHoverRadius: 6,
                 pointBackgroundColor: c.green
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title: function(items) {
+                            return `Timestamp: ${items[0].label}`;
+                        },
+                        label: function(item) {
+                            return ` Attacks: ${item.raw} events`;
+                        }
+                    }
+                }
+            },
             scales: {
                 x: {
-                    ticks: { color: c.textColor, font: { size: 10 } },
+                    ticks: {
+                        color: c.textColor,
+                        font: { size: 9 },
+                        maxRotation: 0,
+                        minRotation: 0,
+                        autoSkip: true,
+                        autoSkipPadding: 14
+                    },
                     grid: { color: c.gridColor }
                 },
                 y: {
-                    ticks: { color: c.textColor, font: { size: 10 } },
+                    ticks: { color: c.textColor, font: { size: 10 }, stepSize: 1 },
                     grid: { color: c.gridColor },
                     beginAtZero: true
                 }
@@ -93,7 +94,7 @@ function initTimeSeriesChart() {
     });
 }
 
-// 2. Products / Decoy Services Bar Chart (Logsign Image 2)
+// 2. Products / Decoy Services Bar Chart
 function initProductsBarChart() {
     const ctx = document.getElementById('productsBarChart');
     if (!ctx) return;
@@ -102,10 +103,10 @@ function initProductsBarChart() {
     productsBarChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['SSH Decoy', 'Web Admin', 'FTP Probe', 'Telnet Probe', 'RDP Probe'],
+            labels: [],
             datasets: [{
                 label: 'Event Hits',
-                data: [4, 6, 2, 1, 3],
+                data: [],
                 backgroundColor: [c.blue, c.purple, c.cyan, c.amber, c.red],
                 borderRadius: 4
             }]
@@ -115,14 +116,14 @@ function initProductsBarChart() {
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-                x: { ticks: { color: c.textColor, font: { size: 9 } }, grid: { display: false } },
-                y: { ticks: { color: c.textColor, font: { size: 10 } }, grid: { color: c.gridColor }, beginAtZero: true }
+                x: { ticks: { color: c.textColor, font: { size: 9 }, maxRotation: 0, autoSkip: true }, grid: { display: false } },
+                y: { ticks: { color: c.textColor, font: { size: 10 }, stepSize: 1 }, grid: { color: c.gridColor }, beginAtZero: true }
             }
         }
     });
 }
 
-// 3. Log Types Volume Doughnut Chart (Logsign Image 2)
+// 3. Log Types Volume Doughnut Chart
 function initLogTypesDoughnutChart() {
     const ctx = document.getElementById('logTypesDoughnutChart');
     if (!ctx) return;
@@ -133,7 +134,7 @@ function initLogTypesDoughnutChart() {
         data: {
             labels: ['Critical (Honeytoken)', 'High (SQLi/XSS)', 'Medium (BruteForce)', 'Info (Scan Probe)'],
             datasets: [{
-                data: [1, 3, 5, 7],
+                data: [0, 0, 0, 0],
                 backgroundColor: [c.red, c.amber, c.blue, c.green],
                 borderWidth: 0
             }]
@@ -152,7 +153,7 @@ function initLogTypesDoughnutChart() {
     });
 }
 
-// 4. Event Actions Horizontal Bar Chart (Logsign Image 2)
+// 4. Event Actions Horizontal Bar Chart
 function initEventActionsHorizontalChart() {
     const ctx = document.getElementById('eventActionsHorizontalChart');
     if (!ctx) return;
@@ -165,7 +166,7 @@ function initEventActionsHorizontalChart() {
             labels: ['Quarantined', 'Alerted', 'Monitored', 'Blocked'],
             datasets: [{
                 label: 'Count',
-                data: [3, 8, 12, 5],
+                data: [0, 0, 0, 0],
                 backgroundColor: [c.red, c.amber, c.green, c.purple],
                 borderRadius: 4
             }]
@@ -175,27 +176,92 @@ function initEventActionsHorizontalChart() {
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-                x: { ticks: { color: c.textColor, font: { size: 10 } }, grid: { color: c.gridColor }, beginAtZero: true },
+                x: { ticks: { color: c.textColor, font: { size: 10 }, stepSize: 1 }, grid: { color: c.gridColor }, beginAtZero: true },
                 y: { ticks: { color: c.textColor, font: { size: 10 } }, grid: { display: false } }
             }
         }
     });
 }
 
-function updateSiemCharts(logs) {
-    if (!logs) return;
+// Zoom Controls for Line Plot (Zoom In, Zoom Out, Fit All)
+function zoomTimeSeriesChart(action) {
+    const timeKeys = Object.keys(cachedSecondBuckets).sort();
+    if (timeKeys.length === 0) return;
 
-    // Update Log Types Doughnut
+    if (action === 'in') {
+        linePlotZoomLimit = Math.max(5, Math.floor(linePlotZoomLimit / 1.6));
+    } else if (action === 'out') {
+        linePlotZoomLimit = Math.min(timeKeys.length, Math.ceil(linePlotZoomLimit * 1.6));
+    } else if (action === 'reset') {
+        linePlotZoomLimit = timeKeys.length;
+    }
+
+    renderTimeSeriesPlot();
+}
+
+function renderTimeSeriesPlot() {
+    if (!timeSeriesChartInstance) return;
+
+    const timeKeys = Object.keys(cachedSecondBuckets).sort();
+    if (timeKeys.length === 0) {
+        timeSeriesChartInstance.data.labels = [];
+        timeSeriesChartInstance.data.datasets[0].data = [];
+    } else {
+        const sliceCount = Math.min(linePlotZoomLimit, timeKeys.length);
+        const visibleKeys = timeKeys.slice(-sliceCount);
+
+        timeSeriesChartInstance.data.labels = visibleKeys;
+        timeSeriesChartInstance.data.datasets[0].data = visibleKeys.map(k => cachedSecondBuckets[k]);
+    }
+    timeSeriesChartInstance.update();
+}
+
+// Update Charts Real-Time from Telemetry Stream
+function updateSiemCharts(logs) {
+    if (!logs || logs.length === 0) {
+        resetCharts();
+        return;
+    }
+
+    // Update Severity & Service Breakdown
     let counts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
     let services = {};
+    let actions = { Quarantined: 0, Alerted: 0, Monitored: 0, Blocked: 0 };
+    cachedSecondBuckets = {};
 
     logs.forEach(l => {
         const sev = l.severity || 'LOW';
         if (counts[sev] !== undefined) counts[sev]++;
+
         const s = l.decoy_service || 'UNKNOWN';
         services[s] = (services[s] || 0) + 1;
+
+        if (l.quarantined) {
+            actions.Quarantined++;
+            actions.Blocked++;
+        } else if (sev === 'CRITICAL' || sev === 'HIGH') {
+            actions.Alerted++;
+        } else {
+            actions.Monitored++;
+        }
+
+        // Group by Real Time Second (HH:MM:SS)
+        if (l.timestamp) {
+            let timeStr = "";
+            if (l.timestamp.includes("T")) {
+                timeStr = l.timestamp.split("T")[1].substring(0, 8);
+            } else if (l.timestamp.includes(" ")) {
+                timeStr = l.timestamp.split(" ")[1].substring(0, 8);
+            } else {
+                timeStr = l.timestamp.substring(0, 8);
+            }
+            if (timeStr) {
+                cachedSecondBuckets[timeStr] = (cachedSecondBuckets[timeStr] || 0) + 1;
+            }
+        }
     });
 
+    // 1. Update Doughnut Chart
     if (logTypesDoughnutChartInstance) {
         logTypesDoughnutChartInstance.data.datasets[0].data = [
             counts.CRITICAL,
@@ -206,36 +272,49 @@ function updateSiemCharts(logs) {
         logTypesDoughnutChartInstance.update();
     }
 
-    if (productsBarChartInstance && Object.keys(services).length > 0) {
+    // 2. Update Products / Services Bar Chart
+    if (productsBarChartInstance) {
         productsBarChartInstance.data.labels = Object.keys(services);
         productsBarChartInstance.data.datasets[0].data = Object.values(services);
         productsBarChartInstance.update();
     }
 
+    // 3. Update Event Actions Horizontal Bar Chart
+    if (eventActionsHorizontalChartInstance) {
+        eventActionsHorizontalChartInstance.data.datasets[0].data = [
+            actions.Quarantined,
+            actions.Alerted,
+            actions.Monitored,
+            actions.Blocked
+        ];
+        eventActionsHorizontalChartInstance.update();
+    }
+
+    // 4. Update Line Plot with Zoom Clamping
+    renderTimeSeriesPlot();
+}
+
+// Reset All Charts Back to Zero / Empty State
+function resetCharts() {
+    cachedSecondBuckets = {};
+    linePlotZoomLimit = 15;
+
     if (timeSeriesChartInstance) {
-        const { labels } = generateISTTimeBuckets();
-        const counts = new Array(8).fill(0);
-        const nowMs = new Date().getTime();
-
-        if (logs && logs.length > 0) {
-            logs.forEach(l => {
-                if (!l.timestamp) return;
-                const logTime = new Date(l.timestamp.replace(" ", "T")).getTime();
-                if (isNaN(logTime)) return;
-
-                const ageMs = nowMs - logTime;
-                if (ageMs >= 0 && ageMs <= 24 * 3600 * 1000) {
-                    const hoursAgo = ageMs / (3600 * 1000);
-                    let idx = 7 - Math.floor(hoursAgo / 3);
-                    if (idx < 0) idx = 0;
-                    if (idx > 7) idx = 7;
-                    counts[idx]++;
-                }
-            });
-        }
-
-        timeSeriesChartInstance.data.labels = labels;
-        timeSeriesChartInstance.data.datasets[0].data = counts;
+        timeSeriesChartInstance.data.labels = [];
+        timeSeriesChartInstance.data.datasets[0].data = [];
         timeSeriesChartInstance.update();
+    }
+    if (productsBarChartInstance) {
+        productsBarChartInstance.data.labels = [];
+        productsBarChartInstance.data.datasets[0].data = [];
+        productsBarChartInstance.update();
+    }
+    if (logTypesDoughnutChartInstance) {
+        logTypesDoughnutChartInstance.data.datasets[0].data = [0, 0, 0, 0];
+        logTypesDoughnutChartInstance.update();
+    }
+    if (eventActionsHorizontalChartInstance) {
+        eventActionsHorizontalChartInstance.data.datasets[0].data = [0, 0, 0, 0];
+        eventActionsHorizontalChartInstance.update();
     }
 }

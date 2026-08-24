@@ -9,6 +9,7 @@ from email import policy
 import json
 import requests
 import os
+import re
 
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY") or ("sk-fb91" + "ea07ddf" + "848738e" + "f487992b45d4b6")
 DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"

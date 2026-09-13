@@ -95,6 +95,7 @@ DEVELOPER TEAM:
 - Abhijeet Kumar (Team Lead & Core Architect)
 - Kanaka C (Security Analyst & Frontend Engineer)
 - Raghunandan T V (Backend Engineer & Threat Intelligence)
+- Sanjay Kashyap (Security QA & Penetration Testing)
 
 PROJECT GUIDE:
 - Mr. Subhash J R (Lecturer, Dept of CSE)

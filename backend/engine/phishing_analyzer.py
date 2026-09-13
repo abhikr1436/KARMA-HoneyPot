@@ -11,8 +11,8 @@ import requests
 import os
 import re
 
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY") or ("sk-fb91" + "ea07ddf" + "848738e" + "f487992b45d4b6")
-DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
+from backend.config import DEEPSEEK_API_KEY, DEEPSEEK_API_URL
+DEEPSEEK_URL = DEEPSEEK_API_URL
 
 def parse_and_analyze_eml(eml_bytes: bytes, filename: str = "email.eml"):
     """

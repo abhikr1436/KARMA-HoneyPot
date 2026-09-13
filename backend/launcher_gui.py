@@ -78,7 +78,7 @@ class KarmaPreflightLauncher:
 
         team_info = tk.Label(
             header,
-            text="Created by Kanaka C, Abhijeet Kumar & Raghunandan T V • Sem VI Major Project | Guide: Mr. Subhash J R",
+            text="Created by Kanaka C, Abhijeet Kumar, Raghunandan T V & Sanjay Kashyap • Sem VI Major Project | Guide: Mr. Subhash J R",
             font=("Segoe UI", 9, "italic"),
             bg="#1e293b",
             fg="#10b981"

@@ -1,6 +1,6 @@
 /*
  * K.A.R.M.A Cyber Toolkit Module
- * Developed by Team K.A.R.M.A (Abhijeet, Kanaka, Raghunandan)
+ * Developed by Team K.A.R.M.A (Abhijeet, Kanaka, Raghunandan, Sanjay Kashyap)
  * Department of Computer Science & Engineering - Major Project
  *
  * Tools Included:

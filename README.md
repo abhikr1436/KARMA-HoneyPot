@@ -21,6 +21,7 @@
 1. **Abhijeet Kumar** — *Team Lead & Core System Architect*
 2. **Kanaka C** — *Security Analyst & Frontend UI/UX Engineer*
 3. **Raghunandan T V** — *Backend Engineer & Threat Intelligence Specialist*
+4. **Sanjay Kashyap** — *Security QA & Penetration Testing Specialist*
 
 ---
 
@@ -48,9 +49,12 @@
 - **Uncapped Threat Counter**: Continuously tracks real-time attack counts across all ports.
 - **CSV Session Audit Archiver**: Automatically logs session events to `logs/karma_audit_YYYY-MM-DD_HH-MM-SS.csv` with one-click preview and download capabilities.
 
-### 4. 🧠 DeepSeek AI Threat Intelligence & MITRE ATT&CK Classifier
-- Integrated with **DeepSeek AI Neural Engine** (`deepseek-chat`) to generate detailed incident response reports analyzing attacker intent, threat severity, and remediation steps.
-- Automatic TTP taxonomy classification (`T1046 Network Discovery`, `T1110 Brute Force`, `T1059 Command Interpreter`, `T1190 Exploit Public App`, `T1078 Valid Accounts`).
+### 4. 🧠 DeepSeek AI Threat Intelligence & KARMA AI SOC Copilot
+- **KARMA AI SOC Copilot**: Full conversational Cybersecurity AI Agent powered by **DeepSeek AI Neural Engine** (`deepseek-chat`).
+  - **Dual Access Modes**: Full-screen conversational view (OpenAI/Gemini style) with prompt suggestions, live SIEM context injection, copyable code blocks, and markdown transcript export; plus a persistent **Gmail-composer style Floating Action Button (FAB) widget** accessible across all dashboard tabs.
+  - **Live SIEM Telemetry Awareness**: Real-time context ingestion summarizing active decoy status, quarantined IPs, and top attacker telemetry.
+  - **Incident Response & Playbook Generation**: Automatically constructs defensive containment rules (IPTables, Fail2ban, Suricata, Snort, YARA) and MITRE ATT&CK mitigation playbooks.
+- **MITRE ATT&CK TTP Classifier**: Automatic taxonomy mapping (`T1046 Network Discovery`, `T1110 Brute Force`, `T1059 Command Interpreter`, `T1190 Exploit Public App`, `T1078 Valid Accounts`).
 
 ### 5. 🧰 Built-in Cyber Toolkit
 - **Password Security & Market Hasher**: Zero-storage client privacy notice, entropy calculation, GPU offline crack time estimation, and market hashes (**SHA-256**, **SHA-512**, **MD5**).
@@ -119,4 +123,4 @@ Open **`AI Phishing .EML Analyzer`** under the `CYBER TOOLKIT` tab in the web da
 
 ## 📜 License & Copyright
 Developed for **Semester VI Major Project (20CS61P)** at **The Oxford Evening Polytechnic**, Bangalore.
-© 2025–2026 Team K.A.R.M.A (Abhijeet Kumar, Kanaka C, Raghunandan T V). All rights reserved.
+© 2025–2026 Team K.A.R.M.A (Abhijeet Kumar, Kanaka C, Raghunandan T V, Sanjay Kashyap). All rights reserved.

@@ -12,6 +12,11 @@ DECOY_PORTS = [21, 23, 3389]  # FTP, Telnet, RDP decoy probes
 # Threat scoring threshold for automated IP quarantine
 QUARANTINE_SCORE_THRESHOLD = 75
 
+# DeepSeek AI Threat Intelligence & Cybersecurity Copilot Configuration
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY") or "sk-5cbb5986a1c145cba084ac78a616eb01"
+DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
+DEEPSEEK_MODEL = "deepseek-chat"
+
 # Default Honeytokens
 DEFAULT_HONEYTOKENS = [
     {

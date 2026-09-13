@@ -61,18 +61,22 @@ function initLeafletMap() {
 }
 
 function updateMapTiles(theme) {
-    const tileUrl = theme === 'dark'
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+    const isDark = theme === 'dark';
+    const tileUrl = isDark
+        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
+        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const tileOptions = isDark
+        ? { maxZoom: 16, attribution: '&copy; ESRI' }
+        : { maxZoom: 19, subdomains: ['a', 'b', 'c'], attribution: '&copy; OpenStreetMap' };
 
     if (leafMap) {
         if (tileLayer1) leafMap.removeLayer(tileLayer1);
-        tileLayer1 = L.tileLayer(tileUrl, { maxZoom: 18 }).addTo(leafMap);
+        tileLayer1 = L.tileLayer(tileUrl, tileOptions).addTo(leafMap);
     }
 
     if (threatsMap) {
         if (tileLayer2) threatsMap.removeLayer(tileLayer2);
-        tileLayer2 = L.tileLayer(tileUrl, { maxZoom: 18 }).addTo(threatsMap);
+        tileLayer2 = L.tileLayer(tileUrl, tileOptions).addTo(threatsMap);
     }
 }
 

@@ -1,6 +1,6 @@
 """
 K.A.R.M.A Cloud SIEM - Core Application Engine & API Gateway
-Authors: Abhijeet Kumar, Kanaka C, Raghunandan T V
+Authors: Abhijeet Kumar, Kanaka C, Raghunandan T V, Sanjay Kashyap
 Project Guide: Mr. Subhash J R (Dept of Computer Science & Engineering)
 
 Handles FastAPI REST endpoints, WebSocket real-time telemetry streaming,
@@ -164,7 +164,7 @@ async def root(request: Request):
             <p class="info">Remote access to the SIEM Control Console is restricted. Your IP has been logged and quarantined.</p>
             <div class="attribution">
                 The Oxford Evening Polytechnic • Cyber Security (Sem VI)<br>
-                Guide: Mr. Subhash J R | Team: Abhijeet, Kanaka, Raghunandan
+                Guide: Mr. Subhash J R | Team: Abhijeet, Kanaka, Raghunandan, Sanjay Kashyap
             </div>
         </div>
     </body>
@@ -220,7 +220,7 @@ async def real_admin_login():
             </div>
             <div class="attribution">
                 The Oxford Evening Polytechnic • Cyber Security (Sem VI)<br>
-                Guide: Mr. Subhash J R | Team: Abhijeet, Kanaka, Raghunandan
+                Guide: Mr. Subhash J R | Team: Abhijeet, Kanaka, Raghunandan, Sanjay Kashyap
             </div>
         </div>
     </body>
@@ -610,6 +610,33 @@ async def analyze_phishing_eml_api(file: UploadFile = File(...)):
     content = await file.read()
     from backend.engine.phishing_analyzer import parse_and_analyze_eml
     return parse_and_analyze_eml(content, filename=file.filename)
+
+class AIChatMessage(BaseModel):
+    role: str = "user"
+    content: str = ""
+
+class AIChatRequest(BaseModel):
+    messages: List[AIChatMessage] = []
+    include_siem_context: bool = True
+
+@app.post("/api/ai/chat")
+async def ai_chat_endpoint(req: AIChatRequest):
+    from backend.engine.ai_chat import generate_cybersecurity_chat_response
+    msgs = [{"role": m.role, "content": m.content} for m in req.messages]
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(None, generate_cybersecurity_chat_response, msgs, req.include_siem_context)
+    return result
+
+@app.get("/api/ai/status")
+async def ai_status_endpoint():
+    from backend.config import DEEPSEEK_MODEL
+    return {
+        "status": "online",
+        "agent": "KARMA AI Cybersecurity SOC Copilot",
+        "model": DEEPSEEK_MODEL,
+        "engine": "DeepSeek Neural Threat Engine",
+        "siem_context_support": True
+    }
 
 @app.on_event("startup")
 async def startup_event():

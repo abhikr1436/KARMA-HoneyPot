@@ -34,6 +34,37 @@ function setTheme(theme) {
     if (leafMap || threatsMap) {
         updateMapTiles(theme);
     }
+
+    // Synchronize Chart.js colors with Clay Theme
+    if (typeof getChartColors === 'function') {
+        const c = getChartColors();
+        if (typeof timeSeriesChartInstance !== 'undefined' && timeSeriesChartInstance && timeSeriesChartInstance.options.scales) {
+            timeSeriesChartInstance.options.scales.x.ticks.color = c.textColor;
+            timeSeriesChartInstance.options.scales.x.grid.color = c.gridColor;
+            timeSeriesChartInstance.options.scales.y.ticks.color = c.textColor;
+            timeSeriesChartInstance.options.scales.y.grid.color = c.gridColor;
+            timeSeriesChartInstance.update();
+        }
+        if (typeof productsBarChartInstance !== 'undefined' && productsBarChartInstance && productsBarChartInstance.options.scales) {
+            productsBarChartInstance.options.scales.x.ticks.color = c.textColor;
+            productsBarChartInstance.options.scales.y.ticks.color = c.textColor;
+            productsBarChartInstance.options.scales.y.grid.color = c.gridColor;
+            productsBarChartInstance.update();
+        }
+        if (typeof logTypesDoughnutChartInstance !== 'undefined' && logTypesDoughnutChartInstance) {
+            logTypesDoughnutChartInstance.data.datasets[0].borderColor = theme === 'dark' ? '#172033' : '#f9fbfe';
+            if (logTypesDoughnutChartInstance.options.plugins && logTypesDoughnutChartInstance.options.plugins.legend) {
+                logTypesDoughnutChartInstance.options.plugins.legend.labels.color = c.textColor;
+            }
+            logTypesDoughnutChartInstance.update();
+        }
+        if (typeof eventActionsHorizontalChartInstance !== 'undefined' && eventActionsHorizontalChartInstance && eventActionsHorizontalChartInstance.options.scales) {
+            eventActionsHorizontalChartInstance.options.scales.x.ticks.color = c.textColor;
+            eventActionsHorizontalChartInstance.options.scales.x.grid.color = c.gridColor;
+            eventActionsHorizontalChartInstance.options.scales.y.ticks.color = c.textColor;
+            eventActionsHorizontalChartInstance.update();
+        }
+    }
 }
 
 function toggleTheme() {

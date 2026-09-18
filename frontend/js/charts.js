@@ -15,14 +15,14 @@ let cachedSecondBuckets = {};
 function getChartColors() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     return {
-        textColor: isDark ? '#94a3b8' : '#64748b',
-        gridColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
-        blue: isDark ? '#3b82f6' : '#0070f3',
+        textColor: isDark ? '#94a3b8' : '#475569',
+        gridColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(166, 180, 204, 0.25)',
+        blue: '#3b82f6',
         green: '#10b981',
-        purple: isDark ? '#a855f7' : '#7c3aed',
+        purple: isDark ? '#a855f7' : '#8b5cf6',
         amber: '#f59e0b',
-        red: '#ef4444',
-        cyan: '#00f2fe'
+        red: '#f43f5e',
+        cyan: isDark ? '#22d3ee' : '#06b6d4'
     };
 }
 
@@ -47,13 +47,15 @@ function initTimeSeriesChart() {
                 label: 'Attack Event Count',
                 data: [],
                 borderColor: c.green,
-                backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                borderWidth: 2,
-                tension: 0.25,
+                backgroundColor: 'rgba(16, 185, 129, 0.16)',
+                borderWidth: 3,
+                tension: 0.35,
                 fill: true,
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                pointBackgroundColor: c.green
+                pointRadius: 5,
+                pointHoverRadius: 8,
+                pointBackgroundColor: c.green,
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2
             }]
         },
         options: {
@@ -62,6 +64,9 @@ function initTimeSeriesChart() {
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    backgroundColor: 'rgba(23, 32, 51, 0.9)',
+                    padding: 10,
+                    cornerRadius: 10,
                     callbacks: {
                         title: function(items) {
                             return `Timestamp: ${items[0].label}`;
@@ -76,7 +81,7 @@ function initTimeSeriesChart() {
                 x: {
                     ticks: {
                         color: c.textColor,
-                        font: { size: 9 },
+                        font: { size: 9, family: "'Plus Jakarta Sans', sans-serif", weight: '600' },
                         maxRotation: 0,
                         minRotation: 0,
                         autoSkip: true,
@@ -85,7 +90,7 @@ function initTimeSeriesChart() {
                     grid: { color: c.gridColor }
                 },
                 y: {
-                    ticks: { color: c.textColor, font: { size: 10 }, stepSize: 1 },
+                    ticks: { color: c.textColor, font: { size: 10, family: "'Plus Jakarta Sans', sans-serif", weight: '600' }, stepSize: 1 },
                     grid: { color: c.gridColor },
                     beginAtZero: true
                 }
@@ -108,16 +113,20 @@ function initProductsBarChart() {
                 label: 'Event Hits',
                 data: [],
                 backgroundColor: [c.blue, c.purple, c.cyan, c.amber, c.red],
-                borderRadius: 4
+                borderRadius: 10,
+                borderSkipped: false
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            plugins: {
+                legend: { display: false },
+                tooltip: { cornerRadius: 10 }
+            },
             scales: {
-                x: { ticks: { color: c.textColor, font: { size: 9 }, maxRotation: 0, autoSkip: true }, grid: { display: false } },
-                y: { ticks: { color: c.textColor, font: { size: 10 }, stepSize: 1 }, grid: { color: c.gridColor }, beginAtZero: true }
+                x: { ticks: { color: c.textColor, font: { size: 9, family: "'Plus Jakarta Sans', sans-serif", weight: '600' }, maxRotation: 0, autoSkip: true }, grid: { display: false } },
+                y: { ticks: { color: c.textColor, font: { size: 10, family: "'Plus Jakarta Sans', sans-serif", weight: '600' }, stepSize: 1 }, grid: { color: c.gridColor }, beginAtZero: true }
             }
         }
     });
@@ -136,17 +145,21 @@ function initLogTypesDoughnutChart() {
             datasets: [{
                 data: [0, 0, 0, 0],
                 backgroundColor: [c.red, c.amber, c.blue, c.green],
-                borderWidth: 0
+                borderWidth: 3,
+                borderColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#172033' : '#f9fbfe',
+                borderRadius: 6,
+                spacing: 2
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '65%',
+            cutout: '68%',
             plugins: {
+                tooltip: { cornerRadius: 10 },
                 legend: {
                     position: 'right',
-                    labels: { color: c.textColor, font: { size: 10 }, usePointStyle: true, boxWidth: 6 }
+                    labels: { color: c.textColor, font: { size: 10, family: "'Plus Jakarta Sans', sans-serif", weight: '600' }, usePointStyle: true, boxWidth: 8 }
                 }
             }
         }
@@ -168,16 +181,20 @@ function initEventActionsHorizontalChart() {
                 label: 'Count',
                 data: [0, 0, 0, 0],
                 backgroundColor: [c.red, c.amber, c.green, c.purple],
-                borderRadius: 4
+                borderRadius: 10,
+                borderSkipped: false
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            plugins: {
+                legend: { display: false },
+                tooltip: { cornerRadius: 10 }
+            },
             scales: {
-                x: { ticks: { color: c.textColor, font: { size: 10 }, stepSize: 1 }, grid: { color: c.gridColor }, beginAtZero: true },
-                y: { ticks: { color: c.textColor, font: { size: 10 } }, grid: { display: false } }
+                x: { ticks: { color: c.textColor, font: { size: 10, family: "'Plus Jakarta Sans', sans-serif", weight: '600' }, stepSize: 1 }, grid: { color: c.gridColor }, beginAtZero: true },
+                y: { ticks: { color: c.textColor, font: { size: 10, family: "'Plus Jakarta Sans', sans-serif", weight: '600' } }, grid: { display: false } }
             }
         }
     });

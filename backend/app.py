@@ -178,28 +178,124 @@ async def real_admin_login():
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>Aegis Production Vault - Secure Login</title>
-        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <title>Aegis Production Vault — Secure Login</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
         <style>
-            body { background: #090d16; color: #f3f4f6; font-family: 'Plus Jakarta Sans', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-            .card { background: #101726; border: 1px solid rgba(255,255,255,0.08); padding: 36px; border-radius: 12px; width: 380px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+            *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+            body {
+                background: #0c101c;
+                color: #f8fafc;
+                font-family: 'Plus Jakarta Sans', sans-serif;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                padding: 20px;
+            }
+            .card {
+                background: #172033;
+                border: 1px solid rgba(255,255,255,0.08);
+                padding: 40px 36px;
+                border-radius: 26px;
+                width: 400px;
+                max-width: 100%;
+                box-shadow: 12px 24px 44px rgba(0, 0, 0, 0.7),
+                            inset 2px 2px 5px rgba(255, 255, 255, 0.12),
+                            inset -4px -4px 10px rgba(0, 0, 0, 0.7);
+            }
+            .brand-icon {
+                width: 52px;
+                height: 52px;
+                border-radius: 18px;
+                background: linear-gradient(135deg, #10b981, #059669);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 26px;
+                margin: 0 auto 16px auto;
+                box-shadow: 6px 12px 20px rgba(16, 185, 129, 0.35),
+                            inset 2px 2px 4px rgba(255, 255, 255, 0.5),
+                            inset -2px -2px 4px rgba(0, 0, 0, 0.3);
+            }
             .brand { text-align: center; margin-bottom: 24px; }
-            .brand h2 { color: #10b981; margin: 0; font-size: 20px; font-weight: 700; }
-            .brand p { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+            .brand h2 { color: #f8fafc; margin: 0; font-size: 20px; font-weight: 800; }
+            .brand p { font-size: 12px; color: #94a3b8; margin-top: 4px; font-weight: 500; }
             .form-group { margin-bottom: 18px; }
-            label { display: block; margin-bottom: 6px; font-size: 12px; color: #9ca3af; font-weight: 500; }
-            input { width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: #090d16; color: #fff; box-sizing: border-box; font-size: 13px; }
-            input:focus { outline: none; border-color: #10b981; }
-            button { width: 100%; padding: 11px; border-radius: 6px; border: none; background: #10b981; color: #060911; font-weight: 700; cursor: pointer; font-size: 14px; transition: all 0.2s; }
-            button:hover { background: #059669; }
-            .creds-hint { background: rgba(16, 185, 129, 0.05); border: 1px dashed rgba(16, 185, 129, 0.3); padding: 12px; border-radius: 6px; font-size: 11px; color: #10b981; margin-top: 20px; text-align: center; line-height: 1.5; }
-            .attribution { margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px; font-size: 10px; color: #6b7280; text-align: center; }
+            label {
+                display: block;
+                margin-bottom: 8px;
+                font-size: 12px;
+                color: #94a3b8;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            input {
+                width: 100%;
+                padding: 12px 14px;
+                border-radius: 14px;
+                border: 1px solid rgba(255,255,255,0.08);
+                background: #111726;
+                color: #fff;
+                font-family: inherit;
+                font-size: 13.5px;
+                outline: none;
+                box-shadow: inset 3px 3px 7px rgba(0, 0, 0, 0.7),
+                            inset -1px -1px 3px rgba(255, 255, 255, 0.05);
+                transition: border-color 0.2s;
+            }
+            input:focus { border-color: #10b981; }
+            button {
+                width: 100%;
+                padding: 13px;
+                border-radius: 14px;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                background: linear-gradient(135deg, #10b981, #059669);
+                color: #ffffff;
+                font-weight: 800;
+                cursor: pointer;
+                font-size: 14px;
+                font-family: inherit;
+                box-shadow: 6px 14px 24px rgba(0, 0, 0, 0.6),
+                            inset 2px 2px 4px rgba(255, 255, 255, 0.4),
+                            inset -3px -3px 6px rgba(0, 0, 0, 0.6);
+                transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.4, 1.2), box-shadow 0.15s ease;
+                margin-top: 6px;
+            }
+            button:hover { transform: translateY(-2px); }
+            button:active { transform: translateY(2px) scale(0.98); }
+            .creds-hint {
+                background: rgba(16, 185, 129, 0.08);
+                border: 1px solid rgba(16, 185, 129, 0.3);
+                padding: 14px;
+                border-radius: 16px;
+                font-size: 11.5px;
+                color: #10b981;
+                margin-top: 22px;
+                text-align: center;
+                line-height: 1.6;
+                box-shadow: 4px 8px 16px rgba(0,0,0,0.35),
+                            inset 1px 1px 3px rgba(255,255,255,0.1),
+                            inset -2px -2px 4px rgba(0,0,0,0.5);
+            }
+            .attribution {
+                margin-top: 20px;
+                border-top: 1px dashed rgba(255,255,255,0.08);
+                padding-top: 14px;
+                font-size: 10.5px;
+                color: #64748b;
+                text-align: center;
+                line-height: 1.5;
+            }
         </style>
     </head>
     <body>
         <div class="card">
+            <div class="brand-icon">🔒</div>
             <div class="brand">
-                <h2>🔒 Aegis Production Vault</h2>
+                <h2>Aegis Production Vault</h2>
                 <p>Authenticated Corporate Portal (Port 8000)</p>
             </div>
             <form method="POST" action="/real-admin">

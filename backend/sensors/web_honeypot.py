@@ -26,23 +26,139 @@ HTML_TEMPLATE = """
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Aegis Corporate Vault - Admin Authentication</title>
+    <title>Aegis Corporate Vault — Admin Authentication</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        body { background: #0f172a; color: #f8fafc; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .login-box { background: #1e293b; padding: 40px; border-radius: 12px; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 340px; }
-        h2 { margin-top: 0; color: #38bdf8; text-align: center; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 6px; font-size: 14px; color: #94a3b8; }
-        input[type="text"], input[type="password"] { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; border-radius: 6px; border: none; background: #0284c7; color: white; font-weight: bold; cursor: pointer; font-size: 15px; }
-        button:hover { background: #0369a1; }
-        .notice { font-size: 11px; color: #64748b; margin-top: 20px; text-align: center; }
-        a { color: #0284c7; text-decoration: none; font-size: 12px; display: block; margin-top: 15px; text-align: center; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: #0c101c;
+            color: #f8fafc;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .login-box {
+            background: #172033;
+            padding: 40px 36px;
+            border-radius: 26px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 12px 24px 44px rgba(0, 0, 0, 0.7),
+                        inset 2px 2px 5px rgba(255, 255, 255, 0.12),
+                        inset -4px -4px 10px rgba(0, 0, 0, 0.7);
+            width: 380px;
+            max-width: 100%;
+        }
+        .brand-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            margin: 0 auto 16px auto;
+            box-shadow: 6px 12px 20px rgba(59, 130, 246, 0.35),
+                        inset 2px 2px 4px rgba(255, 255, 255, 0.5),
+                        inset -2px -2px 4px rgba(0, 0, 0, 0.3);
+        }
+        h2 {
+            margin-top: 0;
+            color: #f8fafc;
+            font-size: 20px;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+        .sub-tag {
+            text-align: center;
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 24px;
+        }
+        .form-group { margin-bottom: 18px; }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: #111726;
+            color: #fff;
+            font-family: inherit;
+            font-size: 13.5px;
+            outline: none;
+            box-shadow: inset 3px 3px 7px rgba(0, 0, 0, 0.7),
+                        inset -1px -1px 3px rgba(255, 255, 255, 0.05);
+            transition: border-color 0.2s;
+        }
+        input[type="text"]:focus, input[type="password"]:focus {
+            border-color: #3b82f6;
+        }
+        button {
+            width: 100%;
+            padding: 13px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            font-weight: 800;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: inherit;
+            box-shadow: 6px 14px 24px rgba(0, 0, 0, 0.6),
+                        inset 2px 2px 4px rgba(255, 255, 255, 0.4),
+                        inset -3px -3px 6px rgba(0, 0, 0, 0.6);
+            transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.4, 1.2), box-shadow 0.15s ease;
+            margin-top: 6px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(2px) scale(0.98);
+        }
+        .notice {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 20px;
+            text-align: center;
+            line-height: 1.5;
+        }
+        a {
+            color: #38bdf8;
+            text-decoration: none;
+            font-size: 11.5px;
+            display: block;
+            margin-top: 16px;
+            text-align: center;
+            font-weight: 600;
+            transition: color 0.15s;
+        }
+        a:hover {
+            color: #60a5fa;
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
     <div class="login-box">
+        <div class="brand-icon">🛡️</div>
         <h2>Aegis Vault Portal</h2>
+        <div class="sub-tag">Decoy Honeytoken Entrypoint (Port 8080)</div>
         <form method="POST" action="/login">
             <div class="form-group">
                 <label>Username / Email</label>
@@ -52,10 +168,10 @@ HTML_TEMPLATE = """
                 <label>Password</label>
                 <input type="password" name="password" placeholder="••••••••" required>
             </div>
-            <button type="submit">Authenticate</button>
+            <button type="submit">Authenticate to Vault</button>
         </form>
         <a href="/secret-vault-admin-login-php">Backdoor Recovery Console (Legacy)</a>
-        <div class="notice">Restricted Access. All activity logged & monitored.</div>
+        <div class="notice">Restricted Corporate System. All access attempts are profiled and logged into SIEM.</div>
     </div>
 </body>
 </html>
